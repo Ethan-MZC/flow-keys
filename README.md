@@ -13,6 +13,8 @@ Flow Keys targets the editable Workflow Studio flow canvas on HTTPS `*.service-n
 
 During the Australia check, Studio briefly reopened the draft read-only. Reloading and choosing **Edit flow** restored editing. Activation and runtime execution were outside this check.
 
+Use the [release QA checklist](QA.md) to repeat these checks and record editing, persistence, and execution results for another build.
+
 ## Get started
 
 1. Clone this repository or extract **Code → Download ZIP**.
