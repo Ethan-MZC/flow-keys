@@ -1,128 +1,38 @@
-# Flow Keys 0.17.0
+# Flow Keys
 
-Flow Keys는 ServiceNow Workflow Studio에서 키보드로 Flow를 편집하는 Chrome 확장입니다. 현재 편집 중인 행을 강조하고, 단계 추가부터 필드 검색과 데이터 필 연결까지 키보드로 이어갈 수 있습니다. [설치 방법](#설치)
+Edit ServiceNow flows from your keyboard. Flow Keys highlights the active step, keeps it in view, and lets you search actions, fields, and data pills in Workflow Studio.
 
-패널은 메가존클라우드 웹 디자인 레퍼런스의 포인트 블루, 다크 헤더, 회색 배경과 캡슐형 버튼을 사용합니다. 글꼴은 기기에 설치된 Pretendard를 우선하고 시스템 한글 글꼴로 대체합니다. [디자인 레퍼런스](https://oh-my-design.kr/ko/design-systems/megazone)
+## Get started
 
-## 카드에서 바로 쓰는 단축키
+1. Clone this repository or extract **Code → Download ZIP**.
+2. In Chrome 125 or later, open `chrome://extensions`, enable **Developer mode**, and select **Load unpacked**. Choose the folder containing `manifest.json`.
+3. Open an editable flow on your `*.service-now.com` instance. Press **Ctrl+Shift+K** on Windows or **⌘+Shift+K** on macOS to activate Flow Keys. You can also click its toolbar icon.
 
-편집 탭에서 Windows는 **Ctrl+Shift+K**, macOS는 **⌘+Shift+K**로 Flow Keys를 한 번 켜세요. 단계 카드나 제목에 포커스가 있으면 바로 다음 키를 누를 수 있습니다.
+To update, pull the latest changes, reload the extension, and refresh the editor tab.
 
-| 키 | 동작 |
-|---|---|
-| ↑ · ↓ | 화면 순서대로 단계 카드와 삽입 위치를 함께 탐색합니다. 첫 단계 앞, 단계 사이, 빈 If 분기 안의 `+`와 맨 아래 **Add an Action**도 선택할 수 있습니다. |
-| N | 현재 단계의 삽입 위치로 건너뜁니다. 이후 ↑·↓는 일반 탐색과 같은 순서로 이동합니다. |
-| F | 현재 단계의 필드를 찾습니다. 닫힌 Action이나 If는 먼저 펼칩니다. |
-| Enter | 카드에서는 편집을 엽니다. ↑·↓로 고른 `+`에서는 Action 검색을 열고, **Add Trigger**에서는 Trigger 검색을 엽니다. 삽입 위치에서 →를 누르면 Flow Logic이나 Subflow도 고를 수 있습니다. |
-| Esc | 단계 추가 중에는 목록에서 방금 열었던 종류 버튼으로, 종류 버튼에서 같은 삽입 위치로 돌아갑니다. 필드 검색에서는 열었던 단계로 돌아갑니다. |
+## Keyboard guide
 
-예를 들어 두 Action 사이에 추가하려면 앞 카드에서 **↓ → Enter**를 누르고 Action 이름을 입력하세요. **N → Enter**도 사용할 수 있습니다. 입력칸에서 `n`과 `f`는 글자로 입력됩니다. 명령 목록이 필요하면 처음 사용한 단축키를 다시 누르세요.
+| When | Keys | What happens |
+| --- | --- | --- |
+| On the canvas | ↑ / ↓ | Move between steps and insertion points, including empty branches. |
+| On a step | Enter / F | Open the step or search its fields and controls. |
+| Adding a step | N, then Enter | Jump to an insertion point and search actions. On **Add Trigger**, search triggers instead. |
+| At an insertion point | →, then ← / → | Choose Action, Flow Logic, or Subflow. Press Enter to browse. |
+| In a picker | Type, ↑ / ↓, Enter | Filter and select. While browsing results, type to keep searching or press `/` to replace the query. |
+| In a menu or picker | Esc | Return to the previous choice or step. |
+| In the command menu | D / A / E / C / X | Duplicate, annotate, finish, cancel, or open the selected step’s deletion dialog. |
 
-Action 검색을 열었다가 Flow Logic으로 바꾸려면 **Esc**, **오른쪽 방향키**, **Enter**를 차례로 누르세요. Flow Logic 목록에서 Esc를 누르면 **Flow Logic** 버튼이 선택되므로 오른쪽 방향키로 **Subflow**를 고를 수 있습니다.
+**Try it:** Open **Ask For Approval**, press **F**, and type `journal select` to reach the Journal Field selector. In an **If** step, search `group 1 condition 2 OR` to add a condition to that specific row.
 
-기존 설치본은 파일을 교체한 뒤 `chrome://extensions`에서 **Flow Keys → ↻**를 누르세요. 버전 **0.17.0**을 확인하고 열린 PDI 편집 탭을 새로고침하면 됩니다.
+## Language and access
 
-## 참조 필드 검색
+The extension follows Chrome’s display language. English and Korean are included, with English as the fallback. Field names, record values, and native menus use the language of your ServiceNow instance.
 
-Create Incident Task의 **Field Values → Assigned to**에서 동명이인을 검색하면 이름 옆에 사용자 ID가 표시됩니다. 참조 검색 중이거나 결과가 없을 때는 패널에서 상태를 확인할 수 있습니다. ↑·↓로 결과를 고른 뒤 **Enter**로 선택하거나 **Esc**로 취소하세요. Studio가 입력란을 다시 그려도 같은 필드로 포커스가 돌아갑니다.
+Flow Keys uses `activeTab` and `scripting` when you activate it. Duplicate assignee names may trigger a lookup on your own instance using your existing access. If a control is missing, use **Help** to link it for the current tab.
 
-PDI 검증에서는 **Assignment group**을 `Network`로 고정했을 때와 트리거 데이터 필로 연결했을 때 모두 멤버와 비멤버가 검색됐습니다. 그룹과 담당자를 각각 트리거의 데이터 필로 연결한 설정은 새로고침 후에도 유지됐습니다. 테스트 실행으로 생성한 Incident에서는 트리거에서 비어 있던 필드가 그대로 비어 있었습니다.
+## Development
 
-## 필드 검색과 Action 추가
-
-Create Task에서 Table을 Incident로 선택한 뒤 **명령 키 → F**를 열면 **Field Values · Add field value**가 표시됩니다. Enter로 새 행의 필드 검색을 바로 열 수 있습니다. 필드 이름을 먼저 입력한 경우 **새 필드에서 “검색어” 검색**을 선택하면 해당 검색어를 Studio 목록에 전달합니다. 빈 행이 이미 있으면 그 행을 사용합니다. 필드를 선택한 뒤에는 F에서 필드명과 `값`으로 해당 행의 값 입력란을 찾을 수 있습니다. 같은 Field Values 입력을 쓰는 다른 Action에도 적용됩니다.
-
-빈 Flow에서 명령 키 → **N**을 누르면 **Add Trigger**가 첫 삽입 후보로 표시됩니다. Enter를 누르면 Studio의 Trigger 검색창에 커서가 놓입니다. `Created`를 입력한 뒤, 두 열로 된 목록에서 **↓**로 왼쪽의 **Record** 범주에 이동하고 **→**로 오른쪽의 **Created**를 선택하세요. **Enter**를 누르면 **Record Created** 설정이 열립니다. 이미 Trigger를 추가한 Flow에서는 N으로 Action 삽입 위치를 고를 수 있습니다.
-
-긴 Flow에서 단계를 추가하면 편집 영역이 삽입 행, Action 검색창과 결과, 새 단계의 첫 입력 필드 순서로 따라옵니다. 대상이 이미 보이면 위치를 유지합니다. 마우스 휠이나 터치로 직접 스크롤하면 자동 이동이 멈춥니다.
-
-기존 두 단계 사이에 추가하려면 앞 단계를 선택하고 명령 키 → N을 누르세요. Studio가 마우스를 올릴 때만 표시하는 삽입점도 키보드 목록에 포함됩니다. 행에 표시된 단계 이름과 ‘뒤’를 확인하고 Enter를 누르세요.
-
-추가 메뉴의 **Action** 또는 기존 단계의 **Action Properties → Action**을 열면 Studio의 **Search Actions** 입력란에 커서가 놓입니다. 포커스 테두리와 캐럿을 확인하고 작업 이름을 바로 입력하세요. ↓로 모듈과 결과를 탐색할 수 있습니다.
-
-기존 Action을 펼치거나 새 Action을 추가하면 입력 필드가 준비되는 순간 **필드 검색**에 커서가 놓입니다. 예를 들어 Ask For Approval에서 `approval reason`을 입력한 뒤 **Approval Reason**을 고르면 값을 입력할 수 있고, 옆에 Data Pill 아이콘이 붙은 항목을 고르면 데이터 필 선택기가 열립니다. ↑·↓로 고르고 Enter로 이동합니다. Esc를 누르면 단계로 돌아갑니다.
-
-- **명령 키 → F**. Ask For Approval에서 `journal select`를 입력하면 **Journal Field · Select a field**가 나옵니다. Enter로 Journal Field 선택기를 엽니다. `approval reason`을 입력하면 **Approval Reason** 옆에 Studio의 Data Pill Picker 아이콘이 보입니다. 해당 결과에서 Enter를 누르면 Approval Reason의 데이터 필 선택기가 열립니다. `data pill` 또는 `데이터 필`로 아이콘이 있는 항목을 검색할 수도 있습니다.
-- Create Task 또는 Update Record의 Field Values에서는 필드명, 내부 이름 또는 현재 값으로 검색합니다. 예를 들어 `assignment_group`이나 `Change Management`를 입력한 뒤 **Assignment group · 값**에서 Enter를 누르면 해당 값의 선택기가 열립니다. **Order · 값**은 숫자 입력칸으로 이동합니다. 화살표로 검색 결과를 고르고 Esc로 취소할 수 있습니다.
-- 이미 빈 **Select a field** 행이 있다면 검색 결과 마지막의 **새 필드에서 검색**을 선택하세요. 입력한 검색어를 Studio의 필드 목록에 전달합니다. 이름만 입력해도 레코드 값이 변경되지는 않습니다.
-- **명령 키 → N**. 삽입 위치가 여러 개면 위치를 고르고 Enter를 누릅니다. 단계 종류에서는 Action에 포커스가 있으며 ←·→로 Flow Logic이나 Subflow로 이동할 수 있습니다. Enter로 검색창을 열어 `Update Record` 등을 입력합니다. 정확히 일치하는 Action이 하나면 Enter로 추가하고, 여러 결과에서는 ↓로 원하는 결과를 고른 뒤 Enter를 누릅니다.
-- Action이나 Subflow의 모듈과 결과를 방향키로 탐색하다가 글자를 입력하면 검색창에서 기존 검색어에 이어 씁니다. 목록에서 `/`를 누르면 기존 검색어 전체가 선택돼 새 검색어를 바로 입력할 수 있습니다. Backspace는 검색어 끝에서 한 글자를 지웁니다. 검색창이 있는 필드·데이터 필 목록에서도 같은 방법을 사용합니다.
-- 삽입 위치를 고르면 대상 행 전체가 강조되고 **삽입 위치 · 2. If 분기 안**처럼 행 오른쪽에 설명이 표시됩니다. 공간이 부족하면 설명이 바로 아래 줄에 표시됩니다. X는 Studio의 닫기 버튼입니다. **Flow Logic**을 열면 선택 가능한 첫 항목이나 현재 선택된 항목에 테두리가 생깁니다. ↑·↓로 항목을 바꾸고 Enter로 추가합니다. Home·End는 처음·끝으로 이동하고 Esc는 목록을 닫습니다.
-- Trigger를 선택하면 새 폼의 편집 가능한 입력칸으로 이동합니다. Tab과 Shift+Tab으로 긴 폼을 탐색할 때는 해당 필드와 라벨이 함께 보이도록 스크롤합니다. 폼을 기다리는 중 다른 곳을 클릭하거나 키를 누르거나 직접 스크롤하면 자동 이동을 취소합니다.
-
-## 현재 단계 관리
-
-Record Created 트리거 편집 중 명령 키 → **F**로 `Advanced Options` 또는 `고급 옵션`을 검색하고 Enter를 누르면 옵션이 펼쳐지거나 접힙니다. 펼친 뒤에는 현재 세션, 사용자, 테이블, 실행 방식에 표시된 이름으로 검색할 수 있습니다. 같은 화면에서 `Done`, `Cancel`, `Delete`도 검색할 수 있습니다. 명령 키 다음에 **E**, **C**, **X**를 눌러 각각 실행할 수도 있습니다. Delete를 고르면 Studio의 확인 창이 열립니다.
-
-If에서 Incident의 Priority처럼 목록이 있는 조건은 `is` 선택 직후 **목록 값 검색**이 열립니다. 예를 들어 `High`를 입력하고 Enter를 누르면 해당 조건에 **2 - High**가 선택됩니다. Esc로 값 변경을 취소할 수 있습니다.
-
-If 조건에서 왼쪽 데이터 필을 고르면 **조건 및 버튼 검색**에 그 필드에서 사용할 수 있는 비교 연산자가 표시됩니다. 명령 키 → **F**에서 `is not` 또는 `is`를 검색하고 **Enter**로 선택하세요. 값을 받는 연산자는 같은 조건 행의 값 입력란으로 포커스가 이동합니다. `is empty`처럼 값이 필요 없는 경우에는 연산자에 머뭅니다.
-
-If 또는 Else If를 펼치면 **조건 및 버튼 검색**이 열립니다. 열린 Flow Logic에서는 명령 키 → **F**로 다시 열 수 있습니다. `AND`, `OR`, `그룹 1 조건 2` 등으로 검색하고 ↑·↓와 Enter로 고르세요. **그룹 1 · 조건 2 · OR**는 해당 행에 조건을 연결하고, **OR · 새 조건 그룹 추가**는 별도 그룹을 만듭니다. 조건을 추가하면 검색 목록이 갱신됩니다. 연산자 선택, 값 입력, 데이터 필 선택, 조건 삭제 및 Done 등은 해당 단계에서 현재 사용할 수 있을 때 표시됩니다.
-
-Windows에서는 **Ctrl+Shift+K**, macOS에서는 **⌘+Shift+K**를 누르고 키를 뗍니다. 패널에서 단계 이름과 사용할 수 있는 명령을 확인한 뒤 아래 키를 누르거나 명령 버튼을 클릭하세요.
-
-| 키 | Studio 동작 |
-|---|---|
-| D | Duplicate로 현재 단계를 복제합니다. |
-| A | Annotation을 엽니다. 메모를 입력하고 Enter로 저장합니다. |
-| E | Done으로 현재 단계 편집을 완료합니다. |
-| C | Cancel로 현재 단계 편집을 취소합니다. |
-| X | 현재 단계의 Studio 삭제 확인 창을 열고 Delete에 포커스를 둡니다. 대상을 확인한 뒤 Enter로 삭제하거나 Esc로 취소합니다. ←는 Cancel, →는 Delete로 이동합니다. |
-
-ServiceNow PDI의 Workflow Studio에서 현재 편집 단계를 강조하고 기존 선택기를 키보드로 여는 Chrome 개발자 모드 확장입니다. Chrome 125 이상, HTTPS의 `*.service-now.com` 탭을 대상으로 합니다.
-
-## 설치
-
-1. 이 저장소의 **Code → Download ZIP**을 선택하고 압축을 풉니다. Git으로 복제한 폴더를 직접 사용해도 됩니다.
-2. Chrome 주소창에 `chrome://extensions`를 입력하고 **개발자 모드**를 켭니다.
-3. **압축해제된 확장 프로그램을 로드합니다**를 눌러 `manifest.json`이 보이는 폴더를 선택합니다. 목록에 **Flow Keys**가 나타납니다.
-4. PDI에서 편집 가능한 테스트 Flow를 열고 단계 목록이 보이는 화면으로 갑니다. 인스턴스 안에 중첩된 화면이라면 Workflow Studio를 별도 탭으로 열어도 됩니다.
-5. 아래 명령 키나 확장 아이콘으로 Flow Keys를 켭니다. 오른쪽 아래 패널에 현재 선택과 단축키가 표시됩니다. 빈 Flow에서는 **Add Trigger**와 **Add an Action** 사이를 방향키로 이동할 수 있습니다.
-
-## 키보드
-
-| 작업 | Windows | macOS |
-|---|---|---|
-| 명령 열기 | Ctrl+Shift+K | ⌘+Shift+K |
-| 카드에서 삽입 위치 선택 | N | N |
-| 카드에서 현재 단계의 필드 찾기 | F | F |
-| 이전·다음 카드 또는 삽입 위치로 이동 | ↑ / ↓ | ↑ / ↓ |
-| 카드 편집 또는 표시된 위치 확정 | Enter | Return |
-| 입력칸 사이 이동 | Tab / Shift+Tab | Tab / Shift+Tab |
-| 후보 선택 취소, 선택기 닫기, 카드로 복귀 | Esc | Esc |
-
-명령 메뉴를 연 후에는 영문 입력 상태에서 N 또는 F를 누릅니다. 일반 텍스트 입력은 Studio가 처리합니다. 명령 키가 다른 확장과 충돌하면 `chrome://extensions/shortcuts`에서 **Flow Keys**의 활성화 키를 지정하거나 확장 아이콘을 사용합니다.
-
-## PDI에서 2분 테스트
-
-1. If가 있는 편집용 Flow에서 명령 키를 누릅니다. 회색 배경과 왼쪽 선이 선택된 카드 하나에 표시되는지 확인합니다. Esc로 메뉴를 닫고 ↑·↓로 If를 선택합니다.
-2. Enter로 편집 영역을 엽니다. 조건 행에 포커스를 두고 명령 키 다음 F를 누릅니다. 여러 후보가 표시되면 ↑·↓로 이동하고 Enter로 엽니다. Priority가 있는 테이블이라면 검색 후 해당 필드를 선택합니다.
-3. Tab으로 연산자와 값 사이를 이동합니다. 포커스 테두리가 따라오는지 확인합니다. Esc로 선택기를 닫고 카드로 돌아갑니다.
-4. 명령 키 다음 N을 누릅니다. 여러 삽입점이 있으면 가로선과 후보 번호를 확인하고 ↑·↓로 위치를 바꾼 뒤 Enter를 누릅니다. 하나면 해당 추가 메뉴가 바로 열립니다. Studio의 Action / Flow Logic / Subflow 목록에서 원하는 항목을 선택합니다.
-5. 새 단계가 원하는 분기 안에 들어갔는지 확인하고 Studio의 기본 편집 절차로 마무리합니다. 패널에서 **끄기**를 누르면 표시와 단축키 처리가 해제됩니다.
-
-## 실제 화면의 요소가 인식되지 않을 때
-
-릴리스와 화면 모드에 따라 카드나 버튼의 HTML이 다릅니다. **도움말 → 카드 연결**을 누르고 단계의 제목 또는 입력 폼 안을 클릭합니다. 트리거와 액션은 헤더와 폼을 감싸는 단계 단위로 표시합니다. 단계 경계를 확인할 수 없으면 패널에 재선택 안내가 표시됩니다.
-
-**Record Created → Table**을 테스트하려면 트리거를 펼치고 **도움말 → 필드 연결**을 누른 뒤 **Select a Table**의 화살표를 클릭합니다. 목록이 닫힌 채 패널에 **연결됨**이 표시되면 명령 키를 누르고 뗀 뒤 F를 누릅니다. 검색란에 테이블명을 입력하고 Esc로 닫으면 원래 Table 컨트롤로 돌아갑니다. **Trigger → Created**도 같은 방식으로 연결할 수 있습니다. 여러 필드를 연결하면 현재 포커스와 조건 행을 기준으로 후보를 고릅니다.
-
-**If → Condition 1**은 해당 단계를 펼치고 명령 키 다음 F를 눌러 조건 행의 데이터 필 선택기를 엽니다. 후보가 여러 개면 원하는 위치를 방향키와 Enter로 고릅니다. 검색 후 Esc로 닫으면 원래 버튼으로 돌아갑니다. 수동 연결은 현재 편집 세션에 적용됩니다. 단계와 필드의 ID가 유지되면 같은 세션의 재렌더링 후에도 연결을 찾습니다.
-
-툴바 배지가 **FLOW**이면 편집 화면 주소 인식을, **PDI**이면 PDI 도메인을, **!**이면 확장의 해당 사이트 접근 및 관리형 Chrome 정책을 확인합니다. 아이콘에 마우스를 올리면 안내가 표시됩니다.
-
-## 동작 범위
-
-사용자가 호출한 탭에서 `activeTab`과 `scripting`으로 실행합니다. 같은 출처의 접근 가능한 프레임에서 편집 화면을 찾으며, DOM에 드러난 카드와 활성 컨트롤을 이용합니다. 닫힌 선택기에서의 포커스 복귀, 선택기 자체의 키보드 탐색, 아이콘 버튼 자동 인식은 실제 Studio 구현에 따라 달라질 수 있습니다.
-
-Assigned to 검색 결과에 동명이인이 있으면 각 행의 레코드 키로 사용자 ID를 구분합니다. 선택기가 사용자 ID를 제공하지 않으면 현재 PDI의 사용자 테이블에서 해당 결과의 ID만 조회합니다. 조회가 제한된 경우 확인된 레코드 키를 표시합니다. 참조 검색 중, 결과 없음, 검색 실패와 Studio가 표시한 권한 오류는 패널에 안내합니다.
-
-편집 위치와 검색 표시는 탭 메모리에서 처리합니다. 동명이인 조회는 현재 PDI 세션의 읽기 권한을 따릅니다. Flow 변경과 저장은 사용자가 고른 Studio 컨트롤을 통해 이루어집니다.
-
-## 로컬 회귀 테스트
-
-Node.js와 npm이 설치된 환경에서 저장소 루트에서 실행하세요. Playwright가 Chromium에 확장을 직접 로드하고 모의 Workflow Studio 페이지에서 키보드 탐색, 필드 선택, 삽입 및 포커스 복귀를 확인합니다. PDI 로그인은 필요하지 않습니다.
+Run the keyboard regression suite against a simulated Studio page with Node.js and npm. Set `FK_LOCALE=ko` for Korean or `FK_MAC=1` to exercise Command shortcuts.
 
 ```sh
 npm install --no-save --package-lock=false playwright
@@ -130,8 +40,4 @@ npx playwright install chromium
 node workflow-studio.test.cjs
 ```
 
-macOS 단축키 경로도 확인하려면 환경 변수 `FK_MAC=1`을 설정한 뒤 같은 테스트를 실행하세요.
-
-## 라이선스
-
-[MIT License](LICENSE)
+[MIT license](LICENSE)

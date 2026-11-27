@@ -1,0 +1,320 @@
+{
+  "languageTag": {
+    "message": "ko"
+  },
+  "description": {
+    "message": "Workflow Studio에서 편집 위치를 표시하고 키보드로 단계와 조건을 편집합니다."
+  },
+  "openCommands": {
+    "message": "Flow Keys 명령 열기"
+  },
+  "commandDescription": {
+    "message": "편집 명령 열기 · N 단계 추가 · F 필드 선택"
+  },
+  "needPdi": {
+    "message": "service-now.com PDI의 Flow 편집 탭에서 실행하세요."
+  },
+  "needFlow": {
+    "message": "기존 Flow의 편집 화면을 연 뒤 다시 실행하세요."
+  },
+  "activeTitle": {
+    "message": "Flow Keys 사용 중 · 편집 명령 열기"
+  },
+  "cannotRun": {
+    "message": "실행할 수 없습니다. PDI 편집기를 별도 탭에서 열고 사이트 접근 정책을 확인하세요."
+  },
+  "help": {
+    "message": "도움말"
+  },
+  "turnOff": {
+    "message": "끄기"
+  },
+  "manualHelp": {
+    "message": "자동 인식되지 않으면 종류를 누르고 화면 요소를 클릭해 이 탭에 연결하세요."
+  },
+  "linkCard": {
+    "message": "카드 연결"
+  },
+  "linkInsertion": {
+    "message": "삽입점 연결"
+  },
+  "linkField": {
+    "message": "필드 연결"
+  },
+  "helpKeys": {
+    "message": "단계 카드에서 N 추가 · F 필드 검색 · $1 명령 목록"
+  },
+  "addStep": {
+    "message": "단계 추가"
+  },
+  "pickField": {
+    "message": "필드 선택"
+  },
+  "findFields": {
+    "message": "필드 검색"
+  },
+  "findFieldsHint": {
+    "message": "필드명 또는 현재 값 검색"
+  },
+  "searchNewField": {
+    "message": "새 필드에서 “$1” 검색"
+  },
+  "resultsFound": {
+    "message": "검색 결과 $1개 · ↑↓ 이동 · Enter 선택 · Esc 돌아가기"
+  },
+  "noMatches": {
+    "message": "검색 결과 없음 · Esc 돌아가기"
+  },
+  "findConditions": {
+    "message": "조건 및 버튼 검색"
+  },
+  "findConditionsHint": {
+    "message": "조건, AND, OR 또는 버튼 검색"
+  },
+  "editorChanged": {
+    "message": "편집 화면이 바뀌었습니다. F로 다시 검색하세요."
+  },
+  "listChanged": {
+    "message": "선택 목록이 바뀌었습니다. 다시 검색하세요."
+  },
+  "operatorsChanged": {
+    "message": "사용 가능한 연산자가 바뀌었습니다. F로 다시 검색하세요."
+  },
+  "enterConditionValue": {
+    "message": "조건 값 입력"
+  },
+  "findValues": {
+    "message": "목록 값 검색"
+  },
+  "pageChanged": {
+    "message": "화면이 갱신됐습니다. ↑↓로 단계를 다시 선택하세요."
+  },
+  "dataPill": {
+    "message": "데이터 필"
+  },
+  "fieldPicker": {
+    "message": "필드 선택기"
+  },
+  "beforeFirst": {
+    "message": "첫 Action 앞"
+  },
+  "insideBranch": {
+    "message": "$1 분기 안"
+  },
+  "insideStep": {
+    "message": "$1 안"
+  },
+  "afterStep": {
+    "message": "$1 뒤"
+  },
+  "beforeStep": {
+    "message": "$1 앞"
+  },
+  "firstStep": {
+    "message": "첫 단계 위치"
+  },
+  "insertion": {
+    "message": "삽입 위치"
+  },
+  "quickInsertKeys": {
+    "message": "↑↓ 위치 · Enter Action · → 단계 종류 · Esc 취소"
+  },
+  "chooseKeys": {
+    "message": "↑↓ 이동 · Enter 열기 · Esc 취소"
+  },
+  "annotationKeys": {
+    "message": "Annotation · Enter 저장 · Esc 닫기"
+  },
+  "openAnnotation": {
+    "message": "Enter로 Annotation 열기"
+  },
+  "deleteClosed": {
+    "message": "삭제 확인 창을 닫았습니다."
+  },
+  "removed": {
+    "message": "단계가 제거됐습니다."
+  },
+  "deleteKeys": {
+    "message": "← 취소 · → 삭제 · Enter 선택 · Esc 취소"
+  },
+  "checkDelete": {
+    "message": "Studio에서 삭제 대상과 확인 창을 확인하세요."
+  },
+  "commandUnavailable": {
+    "message": "현재 단계에서 $1을 사용할 수 없습니다."
+  },
+  "currentStep": {
+    "message": "현재 단계"
+  },
+  "stepChanged": {
+    "message": "단계가 갱신됐습니다. 명령을 다시 여세요."
+  },
+  "openDelete": {
+    "message": "삭제 확인 창 열기"
+  },
+  "noInsertion": {
+    "message": "삽입점을 찾지 못했습니다. 도움말의 삽입점 연결을 사용하세요."
+  },
+  "field": {
+    "message": "필드"
+  },
+  "value": {
+    "message": "값"
+  },
+  "rowGroup": {
+    "message": "그룹 $1"
+  },
+  "rowCondition": {
+    "message": "조건 $1"
+  },
+  "operator": {
+    "message": "연산자"
+  },
+  "newGroup": {
+    "message": "OR · 새 조건 그룹 추가"
+  },
+  "removeCondition": {
+    "message": "조건 삭제"
+  },
+  "conditionField": {
+    "message": "조건 필드"
+  },
+  "conditionValue": {
+    "message": "조건 값"
+  },
+  "collapse": {
+    "message": "접기"
+  },
+  "expand": {
+    "message": "펼치기"
+  },
+  "selectConditionStep": {
+    "message": "먼저 조건이 있는 카드를 선택하세요."
+  },
+  "noFieldPicker": {
+    "message": "필드 선택기를 찾지 못했습니다. 도움말에서 필드 연결을 사용하세요."
+  },
+  "targetChanged": {
+    "message": "대상이 바뀌었습니다. 위치를 다시 선택하세요."
+  },
+  "noTable": {
+    "message": "Table 선택 버튼을 찾지 못했습니다."
+  },
+  "chooseStep": {
+    "message": "단계 추가 · Studio 선택기에서 항목을 고르세요."
+  },
+  "referenceDenied": {
+    "message": "참조 검색 권한이 없습니다."
+  },
+  "referenceFailed": {
+    "message": "참조 검색에 실패했습니다."
+  },
+  "referenceEmpty": {
+    "message": "검색 결과가 없습니다."
+  },
+  "referenceLoading": {
+    "message": "참조 검색 중…"
+  },
+  "referenceKeys": {
+    "message": "참조 검색 · ↑↓ 이동 · Enter 선택 · Esc 돌아가기"
+  },
+  "missingUserId": {
+    "message": "동명이인 · 일부 결과의 사용자 ID를 확인할 수 없습니다."
+  },
+  "categoryKeys": {
+    "message": "단계 종류 · ← → 이동 · Enter 열기 · Esc 삽입 위치"
+  },
+  "typeToSearch": {
+    "message": "검색창에 이름을 입력하세요 · ↓ 목록 탐색 · Enter 선택"
+  },
+  "backToTypes": {
+    "message": "Esc 단계 종류"
+  },
+  "studioListChanged": {
+    "message": "Studio 목록이 바뀌었습니다. 현재 목록에서 값을 선택하세요."
+  },
+  "selectedValue": {
+    "message": "$1 선택"
+  },
+  "logicKeys": {
+    "message": "↑↓ 이동 · Enter 추가 · Esc 단계 종류"
+  },
+  "newStepFocused": {
+    "message": "추가된 단계로 이동했습니다."
+  },
+  "editStep": {
+    "message": "단계 편집"
+  },
+  "input": {
+    "message": "입력"
+  },
+  "positionChanged": {
+    "message": "삽입 위치가 바뀌어 이전 위치로 돌아왔습니다."
+  },
+  "noStops": {
+    "message": "이동할 단계나 삽입 위치가 없습니다."
+  },
+  "selectedStep": {
+    "message": "단계 선택됨"
+  },
+  "cardKeys": {
+    "message": "↑↓ 단계·삽입 위치 이동 · Enter 편집 · N 추가 · F 필드 검색"
+  },
+  "inputKeys": {
+    "message": "값 입력 · Esc 단계로"
+  },
+  "openWith": {
+    "message": "$1로 명령 열기"
+  },
+  "cancelled": {
+    "message": "취소했습니다."
+  },
+  "linkFailed": {
+    "message": "연결할 수 없습니다. 펼쳐진 단계 안에서 카드나 사용 가능한 필드 버튼을 다시 지정하세요."
+  },
+  "linked": {
+    "message": "연결됨"
+  },
+  "moveKeys": {
+    "message": "↑↓로 이동하세요."
+  },
+  "thenKey": {
+    "message": "$1 후 $2를 누르세요."
+  },
+  "chooseLink": {
+    "message": "연결할 화면 요소를 클릭하세요. Esc로 취소합니다."
+  },
+  "commandKeys": {
+    "message": "명령 키 선택 · Esc 닫기"
+  },
+  "stepUnrecognized": {
+    "message": "단계 미인식 · 도움말에서 카드 연결 또는 N으로 삽입점 찾기"
+  },
+  "duplicate": {
+    "message": "복제"
+  },
+  "annotation": {
+    "message": "주석"
+  },
+  "done": {
+    "message": "완료"
+  },
+  "cancel": {
+    "message": "취소"
+  },
+  "delete": {
+    "message": "삭제"
+  },
+  "pillPicker": {
+    "message": "데이터 필 선택기"
+  },
+  "conditionLabel": {
+    "message": "조건 레이블"
+  },
+  "fieldValues": {
+    "message": "필드 값"
+  },
+  "addFieldValue": {
+    "message": "필드 값 추가"
+  }
+}

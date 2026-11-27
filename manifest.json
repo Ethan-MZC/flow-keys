@@ -1,16 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Flow Keys",
-  "version": "0.17.0",
+  "version": "0.18.0",
+  "default_locale": "en",
   "minimum_chrome_version": "125",
-  "description": "Workflow Studio에서 편집 위치를 표시하고 키보드로 단계와 조건을 편집합니다.",
+  "description": "__MSG_description__",
   "permissions": ["activeTab", "scripting"],
   "background": { "service_worker": "worker.js" },
-  "action": { "default_title": "Flow Keys 명령 열기" },
+  "action": { "default_title": "__MSG_openCommands__" },
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Ctrl+Shift+K", "mac": "Command+Shift+K" },
-      "description": "편집 명령 열기 · N 단계 추가 · F 필드 선택"
+      "description": "__MSG_commandDescription__"
     }
   }
 }

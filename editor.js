@@ -1,6 +1,7 @@
 (() => {
   if (globalThis.flowKeysController) return globalThis.flowKeysController.probe();
 
+  const msg = (key, ...values) => chrome.i18n.getMessage(key, values.map(String));
   const controls = 'button,select,[role="button"],[role="combobox"],[aria-haspopup],input,[tabindex],a[href],[ng-click],[data-ng-click]';
   const cards = '.trigger-section .componentInstance,.actionContainer .componentInstance,[data-step-id],[data-action-instance-id],[data-flow-step],.flow-step,.flow-action-card,.action-instance,[class*="flow-step-card"],[class*="action-instance-card"],sn-fd-action-instance,sn-fd-flow-step,[role="treeitem"]';
   const studioHeader = '#flow_trigger_expand_form,[id^="flow_action_"][id$="_expand_form"]';
@@ -8,11 +9,11 @@
   const logicCard = '.instance-type-flowlogic';
   const triggerCard = '.trigger-section .componentInstance';
   const stepCommands = [
-    {id:'duplicate',key:'D',label:'Duplicate',selector:'[id*="_duplicate_component_instance_icon_"]'},
-    {id:'annotation',key:'A',label:'Annotation',selector:'[id*="_add_comments_icon_"]'},
-    {id:'done',key:'E',label:'Done',selector:'#flow_action_btnDone,#flow_trigger_btnDone,#flow_trigger_btn_done'},
-    {id:'cancel',key:'C',label:'Cancel',selector:'#flow_action_btnCancel,#flow_trigger_btnCancel,#flow_trigger_btn_cancel'},
-    {id:'delete',key:'X',label:'Delete',selector:'#flow_action_btnDelete,#flow_trigger_btnDelete,#flow_trigger_btn_delete,[id*="_delete_icon_"]'}
+    {id:'duplicate',key:'D',label:msg('duplicate'),selector:'[id*="_duplicate_component_instance_icon_"]'},
+    {id:'annotation',key:'A',label:msg('annotation'),selector:'[id*="_add_comments_icon_"]'},
+    {id:'done',key:'E',label:msg('done'),selector:'#flow_action_btnDone,#flow_trigger_btnDone,#flow_trigger_btn_done'},
+    {id:'cancel',key:'C',label:msg('cancel'),selector:'#flow_action_btnCancel,#flow_trigger_btnCancel,#flow_trigger_btn_cancel'},
+    {id:'delete',key:'X',label:msg('delete'),selector:'#flow_action_btnDelete,#flow_trigger_btnDelete,#flow_trigger_btn_delete,[id*="_delete_icon_"]'}
   ];
   const fieldButtons = '.dot_walk_btn,[id^="picker2col_opener_"],.select2-container,select,[role="combobox"]';
   const templateGroup = '.template_picker,[id$="_template_fields"]';
@@ -167,15 +168,15 @@
         @media(prefers-reduced-motion:reduce){button{transition:none}}
         @media(forced-colors:active){[aria-selected=true]{outline:2px solid Highlight;outline-offset:-2px}}
       </style>
-      <section aria-label="Flow Keys"><header><strong>Flow Keys</strong><button id="guide">도움말</button><button id="off">끄기</button></header>
-        <output role="status"></output><small id="key-hint" hidden></small><div id="help" hidden><small>키보드 명령</small><small>자동 인식되지 않으면 종류를 누르고 화면 요소를 클릭해 이 탭에 연결하세요.</small>
-        <button data-bind="card">카드 연결</button><button data-bind="add">삽입점 연결</button><button data-bind="field">필드 연결</button></div></section>`;
+      <section aria-label="Flow Keys" lang="${msg('languageTag')}"><header><strong>Flow Keys</strong><button id="guide">${msg('help')}</button><button id="off">${msg('turnOff')}</button></header>
+        <output role="status"></output><small id="key-hint" hidden></small><div id="help" hidden><small></small><small>${msg('manualHelp')}</small>
+        <button data-bind="card">${msg('linkCard')}</button><button data-bind="add">${msg('linkInsertion')}</button><button data-bind="field">${msg('linkField')}</button></div></section>`;
     const get=id=>ui.getElementById(id);
     const helpText=get('help').querySelector('small');
-    helpText.textContent='단계 카드에서 N 추가 · F 필드 검색 · '+prefix+' 명령 목록';
+    helpText.textContent=msg('helpKeys',prefix);
     const commands=document.createElement('div');
     commands.id='commands';commands.hidden=true;
-    commands.innerHTML='<button data-command="add"><kbd>N</kbd>단계 추가</button><button data-command="field"><kbd>F</kbd>필드 선택</button>';
+    commands.innerHTML=`<button data-command="add"><kbd>N</kbd>${msg('addStep')}</button><button data-command="field"><kbd>F</kbd>${msg('pickField')}</button>`;
     for(const {id,key,label} of stepCommands) {
       const b=document.createElement('button');b.dataset.command=id;
       const shortcut=document.createElement('kbd');shortcut.textContent=key;
@@ -188,7 +189,7 @@
       const ns='http://www.w3.org/2000/svg';
       const icon=document.createElementNS(ns,'svg');
       icon.setAttribute('class','fk-pill');
-      icon.setAttribute('role','img');icon.setAttribute('aria-label','Data Pill Picker');
+      icon.setAttribute('role','img');icon.setAttribute('aria-label',msg('pillPicker'));
       const source=button.querySelector('svg use');
       const href=source?.getAttribute('href') || source?.getAttributeNS('http://www.w3.org/1999/xlink','href');
       const url=href && URL.canParse(href,button.baseURI) && new URL(href,button.baseURI);
@@ -218,7 +219,7 @@
     const on=(target,event,fn,capture=false)=>target.addEventListener(event,fn,{capture,signal:abort.signal});
     const finder=document.createElement('div');
     finder.id='finder';finder.hidden=true;
-    finder.innerHTML='<input role="combobox" aria-label="필드 검색" aria-expanded="true" aria-controls="fk-results" placeholder="필드명 또는 현재 값 검색"><div id="fk-results" role="listbox"></div>';
+    finder.innerHTML='<input role="combobox" aria-expanded="true" aria-controls="fk-results"><div id="fk-results" role="listbox"></div>';
     commands.after(finder);
     const query=finder.querySelector('input');
     const results=get('fk-results');
@@ -239,10 +240,11 @@
     function filterResults() {
       const needle=normalize(query.value);
       const logic=fieldCard?.matches(logicCard);
-      const locationPattern=/(그룹|조건)\s*(\d+)/g;
-      const locationTerms=logic ? [...needle.matchAll(locationPattern)] : [];
+      const locationPattern=/(group|condition|그룹|조건)\s*(\d+)/g;
+      const locationTerms=logic ? [...needle.matchAll(locationPattern)].map(([,type,n]) =>
+        normalize(msg(type==='group' || type==='그룹'?'rowGroup':'rowCondition',n))) : [];
       const terms=(logic?needle.replace(locationPattern,' '):needle).split(' ').filter(Boolean);
-      matches=catalog.filter(entry=>locationTerms.every(([,type,n])=>entry.location?.split(' · ').includes(type+' '+n)) &&
+      matches=catalog.filter(entry=>locationTerms.every(term=>entry.location?.split(' · ').some(part=>normalize(part)===term)) &&
         terms.every(term=>logic && (term==='and' || term==='or') ? entry.join===term : entry.key.includes(term)));
       if(needle) {
         const rank=entry=>entry.label===needle?0:entry.label.startsWith(needle)?1:2;
@@ -254,7 +256,7 @@
         for(const entry of destinations.values()) {
           if(matches.includes(entry)) continue;
           const scope=entry.section ? entry.section+' · ' : '';
-          matches.push({...entry,title:scope+'새 필드에서 “'+query.value.trim()+'” 검색',seed:query.value.trim()});
+          matches.push({...entry,title:scope+msg('searchNewField',query.value.trim()),seed:query.value.trim()});
         }
       }
       const fragment=document.createDocumentFragment();
@@ -270,20 +272,20 @@
         fragment.append(row);
       }
       cursor=0;results.replaceChildren(fragment);highlightResult();
-      say(matches.length ? '검색 결과 '+matches.length+'개 · ↑↓ 이동 · Enter 선택 · Esc 돌아가기' : '검색 결과 없음 · Esc 돌아가기');
+      say(matches.length ? msg('resultsFound',matches.length) : msg('noMatches'));
     }
     function showFinder(entries,returnTo=deepActive(),owner=null,prompt='') {
       commands.hidden=true;fieldCard=owner;
       const logic=owner?.matches(logicCard);
-      query.setAttribute('aria-label',prompt || (logic?'조건 및 버튼 검색':'필드 검색'));
-      query.placeholder=prompt || (logic?'조건, AND, OR 또는 버튼 검색':'필드명 또는 현재 값 검색');
+      query.setAttribute('aria-label',prompt || (logic?msg('findConditions'):msg('findFields')));
+      query.placeholder=prompt || (logic?msg('findConditionsHint'):msg('findFieldsHint'));
       origin=returnTo;catalog=entries;finder.hidden=false;query.value='';
       filterResults();query.focus({preventScroll:true});
     }
     function chooseResult(i) {
       const entry=matches[i];
       if(!entry || !enabled(entry.el) || cardOf(entry.el)!==state.card) {
-        say('편집 화면이 바뀌었습니다. F로 다시 검색하세요.');hideFinder();focus(state.card);return;
+        say(msg('editorChanged'));hideFinder();focus(state.card);return;
       }
       hideFinder();
       if(entry.addRow) {
@@ -294,7 +296,7 @@
         const {el,choice}=entry;
         const select=choiceSelect(el);
         if(!select || select.disabled || choice.closest('select')!==select || !availableChoice(choice)) {
-          say('선택 목록이 바뀌었습니다. 다시 검색하세요.');focus(state.card);return;
+          say(msg('listChanged'));focus(state.card);return;
         }
         if(el===select) {
           applyOption(select,choice);focus(select);
@@ -302,7 +304,7 @@
       } else if(entry.option) {
         const {el,option}=entry;
         if(option.closest('select')!==el || option.matches(':disabled') || option.hidden) {
-          say('사용 가능한 연산자가 바뀌었습니다. F로 다시 검색하세요.');focus(state.card);return;
+          say(msg('operatorsChanged'));focus(state.card);return;
         }
         applyOption(el,option);
         cache=null;
@@ -310,7 +312,7 @@
         if(value && showChoiceValues(value.el)) return;
         if(value?.el.matches('.select2-container')) {openPicker(value.el,'field','',value.title);return;}
         focus(value?.el || (el.isConnected ? el : state.card));
-        say(entry.title+(value?' · 조건 값 입력':''));
+        say(entry.title+(value?' · '+msg('enterConditionValue'):''));
       } else if(entry.press) {
         const card=state.card;
         focus(entry.el);entry.el.click();invalidate();
@@ -345,7 +347,7 @@
         return {el,choice,title,label:normalize(title),key:normalize(title+' '+choice.value)};
       });
       if(!entries.length) return false;
-      reveal(el);showFinder(entries,el,null,'목록 값 검색');return true;
+      reveal(el);showFinder(entries,el,null,msg('findValues'));return true;
     }
     on(query,'input',filterResults);
     on(query,'keydown',e=>{
@@ -368,7 +370,7 @@
           const matches=oldKey ? index().cards.filter(c=>cardKey(c)===oldKey) : [];
           select(matches.length===1 ? matches[0] : null);
           closeChoices();
-          if (!state.card) say('화면이 갱신됐습니다. ↑↓로 단계를 다시 선택하세요.');
+          if (!state.card) say(msg('pageChanged'));
         }
         if (state.position && !state.position.isConnected) closeChoices();
         followInsertionReturn();
@@ -438,10 +440,10 @@
       const owner=rowLabel || groupLabel(el);
       if(pill) {
         const target=rowLabel || (pillName.test(current) && current.replace(pillName,'').trim()) || owner;
-        const label=target || '데이터 필';
-        return {label,title:label,pill:true,accessible:label+' · Data Pill Picker'};
+        const label=target || msg('dataPill');
+        return {label,title:label,pill:true,accessible:label+' · '+msg('pillPicker')};
       }
-      const label=owner || current || '필드 선택기';
+      const label=owner || current || msg('fieldPicker');
       return {label,title:owner && current && normalize(owner)!==normalize(current) ? owner+' · '+current : label,pill:false};
     }
     function styleRoot(el) {
@@ -554,12 +556,12 @@
       return (title || '').replace(/^(?:expand|collapse)\s+(?:action|flow logic|subflow)\s+(\d+)\s*-\s*(?:[^-]+\s+-\s+)?/i,'$1. ').trim().slice(0,80);
     }
     function relativePosition(label) {
-      if(/before first action/i.test(label)) return '첫 Action 앞';
+      if(/before first action/i.test(label)) return msg('beforeFirst');
       const match=label.match(/\b(child of|inside|after|before)\s+(.+)/i);
       if(!match) return '';
       const title=match[2].replace(/^(\d+)\s*-\s*/, '$1. ');
-      const relation={'child of':'분기 안','inside':'분기 안','after':'뒤','before':'앞'};
-      return title+' '+relation[match[1].toLowerCase()];
+      const relation={'child of':'insideBranch','inside':'insideBranch','after':'afterStep','before':'beforeStep'};
+      return msg(relation[match[1].toLowerCase()],title);
     }
     function insertionPosition(el) {
       if(el.matches(addTrigger)) return 'Add Trigger';
@@ -577,15 +579,15 @@
         }
         if(n.matches('.actionContainer')) {
           const header=n.querySelector(studioHeader);
-          if(header && n.contains(row)) return stepTitle(header)+' 분기 안';
+          if(header && n.contains(row)) return msg('insideBranch',stepTitle(header));
         }
       }
       const owner=cardOf(el);
-      if(owner) return stepTitle(owner)+' 안';
+      if(owner) return msg('insideStep',stepTitle(owner));
       const steps=index().cards.filter(c=>c.getRootNode()===row.getRootNode() && !c.matches('[role=treeitem]') && !c.contains(row) && !row.contains(c));
       const prev=steps.filter(c=>c.compareDocumentPosition(row)&Node.DOCUMENT_POSITION_FOLLOWING).at(-1);
-      if(prev) return stepTitle(prev)+' 뒤';
-      return steps.length ? stepTitle(steps[0])+' 앞' : '첫 단계 위치';
+      if(prev) return msg('afterStep',stepTitle(prev));
+      return steps.length ? msg('beforeStep',stepTitle(steps[0])) : msg('firstStep');
     }
     function draw() {
       const el=state.position || state.picker?.categories?.find(enabled);
@@ -609,13 +611,13 @@
     }
     function preview(i) {
       const el=state.choices[i];state.position=el;
-      const description='삽입 위치 · '+insertionPosition(el)+' ('+(i+1)+'/'+state.choices.length+')';
+      const description=msg('insertion')+' · '+insertionPosition(el)+' ('+(i+1)+'/'+state.choices.length+')';
       captionText.textContent=description;draw();
       state.card?.setAttribute('data-flowkeys-preview-origin','');
       mark('field',null);
       focus(el,rowCaption);
       const quick=state.quickOrigin && !el.matches(addTrigger);
-      say(description+(quick?' · ↑↓ 위치 · Enter Action · → 단계 종류 · Esc 취소':' · ↑↓ 이동 · Enter 열기 · Esc 취소'));
+      say(description+(quick?' · '+msg('quickInsertKeys'):' · '+msg('chooseKeys')));
     }
     function localButtons(card) {return index().buttons.filter(b=>cardOf(b)===card && enabled(b));}
     function stepButton(card,spec) {
@@ -631,7 +633,7 @@
         .find(el=>enabled(el) && cardOf(el)===card);
       if(!editor) return false;
       annotationCard=null;clearTimeout(annotationTimer);
-      focus(editor);say(stepTitle(card)+' · Annotation · Enter 저장 · Esc 닫기');return true;
+      focus(editor);say(stepTitle(card)+' · '+msg('annotationKeys'));return true;
     }
     function openAnnotation(card,button) {
       if(focusAnnotation(card)) return;
@@ -645,7 +647,7 @@
         say(stepTitle(card)+' · Annotation');
         clearTimeout(annotationTimer);
         annotationTimer=setTimeout(()=>{
-          if(annotationCard===card && deepActive()===button) say(stepTitle(card)+' · Enter로 Annotation 열기');
+          if(annotationCard===card && deepActive()===button) say(stepTitle(card)+' · '+msg('openAnnotation'));
           annotationCard=null;
         },1200);
       }
@@ -669,7 +671,7 @@
         const current=cardOf(deepActive());
         if(current) select(current);
         else if(card.isConnected && shown(card) && deepActive()===document.body) {select(card);focus(card);}
-        say(card.isConnected?'삭제 확인 창을 닫았습니다.':title+' · 단계가 제거됐습니다.');
+        say(card.isConnected?msg('deleteClosed'):title+' · '+msg('removed'));
         return;
       }
       const modal=deleteModal(card);
@@ -677,7 +679,7 @@
       clearTimeout(deletion.timer);Object.assign(deletion,modal);
       const active=deepActive();
       if(active!==modal.cancel && active!==modal.confirm) focus(enabled(modal.confirm)?modal.confirm:modal.cancel);
-      say(title+' · ← 취소 · → 삭제 · Enter 선택 · Esc 취소');
+      say(title+' · '+msg('deleteKeys'));
     }
     function awaitDeleteModal(card) {
       if(deletion) clearTimeout(deletion.timer);
@@ -685,19 +687,19 @@
       deletion=pendingDelete;
       pendingDelete.timer=setTimeout(()=>{
         if(deletion===pendingDelete && !deletion.dialog) {
-          deletion=null;say('Studio에서 삭제 대상과 확인 창을 확인하세요.');
+          deletion=null;say(msg('checkDelete'));
         }
       },3500);
     }
     function runStep(spec) {
       const card=commandCard;
       const button=card===state.card && stepButton(card,spec);
-      if(!button) {say('현재 단계에서 '+spec.label+'을 사용할 수 없습니다.');return;}
-      const title=stepTitle(card) || '현재 단계';
+      if(!button) {say(msg('commandUnavailable',spec.label));return;}
+      const title=stepTitle(card) || msg('currentStep');
       button.focus({preventScroll:true});reveal(button);
-      if(!button.isConnected || !card.isConnected) {say('단계가 갱신됐습니다. 명령을 다시 여세요.');return;}
+      if(!button.isConnected || !card.isConnected) {say(msg('stepChanged'));return;}
       if(spec.id==='delete') {
-        say(title+' · 삭제 확인 창 열기');
+        say(title+' · '+msg('openDelete'));
         button.click();syncDeleteModal();return;
       }
       if(spec.id==='annotation') {openAnnotation(card,button);return;}
@@ -719,14 +721,14 @@
     }
     function beginAdd(quickOrigin=null,placement='') {
       const candidates=insertionTargets();
-      if (!candidates.length) {say('삽입점을 찾지 못했습니다. 도움말의 삽입점 연결을 사용하세요.');return;}
+      if (!candidates.length) {say(msg('noInsertion'));return;}
       state.previewOrigin=quickOrigin || (ui.contains(deepActive()) ? state.card : deepActive());
       state.choices=candidates;
       state.quickOrigin=quickOrigin;
       state.choiceKind='add';
       const title=stepTitle(state.card);
-      const after=title && (candidates.find(b=>b.matches(hoverInsertion) && relativePosition(name(b))===title+' 뒤') ||
-        candidates.find(b=>b.closest('.new-component-last') && insertionPosition(b)===title+' 뒤'));
+      const after=title && (candidates.find(b=>b.matches(hoverInsertion) && relativePosition(name(b))===msg('afterStep',title)) ||
+        candidates.find(b=>b.closest('.new-component-last') && insertionPosition(b)===msg('afterStep',title)));
       const previous=placement && candidates.find(b=>insertionPosition(b)===placement);
       const first=previous || after ? candidates.indexOf(previous || after) : candidates.findIndex(b=>cardOf(b)===state.card);
       if (candidates.length===1 && !quickOrigin) openPicker(candidates[0],'add');
@@ -747,17 +749,17 @@
       for(const button of card.querySelectorAll(addFieldButton)) {
         const template=button.closest('.template_picker') || button.closest(templateGroup);
         if(!template) continue;
-        const section=groupLabel(button) || 'Field Values';
-        const title=section+' · '+(button.innerText.trim() || 'Add field value');
+        const section=groupLabel(button) || msg('fieldValues');
+        const title=section+' · '+(button.innerText.trim() || msg('addFieldValue'));
         add(button,section,'','',false,{title,section,template,addRow:true,internalName:'필드 값 추가'});
       }
       for(const row of card.querySelectorAll('.template_picker .colrow,[id$="_template_fields"] .colrow')) {
         const valueBox=row.querySelector('.colfield,[id$="_colfield"]');
         const field=Array.from(row.querySelectorAll('.select2-container')).find(el=>!valueBox?.contains(el));
         if(!field || !shown(field)) continue;
-        const label=fieldLabel(field) || '필드';
+        const label=fieldLabel(field) || msg('field');
         const template=row.closest('.template_picker') || row.closest(templateGroup);
-        const section=groupLabel(template) || 'Field Values';
+        const section=groupLabel(template) || msg('fieldValues');
         const internalName=field.nextElementSibling?.matches('select') ? field.nextElementSibling.value : '';
         const context={template,section,internalName};
         if(valueBox) {
@@ -766,15 +768,16 @@
             const picker=value.matches('.select2-container,select,[role=combobox]');
             const current=value.matches('.select2-container')?fieldLabel(value):
               value.matches('select')?value.selectedOptions[0]?.text : value.value ?? value.textContent;
-            add(value,label,'값',String(current || '').trim(),!picker,{...context,valueInput:picker});
+            add(value,label,msg('value'),String(current || '').trim(),!picker,{...context,valueInput:picker});
           }
         }
-        add(field,label,'필드 선택','',false,{...context,blank:!!field.querySelector('.select2-choice.select2-default')});
+        add(field,label,msg('pickField'),'',false,{...context,blank:!!field.querySelector('.select2-choice.select2-default')});
         const pill=valueBox?.querySelector('.dot_walk_btn');
         if(pill) add(pill,label,'','',false,{...context,...fieldDescription(pill,label)});
       }
       for(const el of candidates) {
-        if(entries.has(el) || el.closest(templateGroup) && !manual.field.has(el)) continue;
+        if(entries.has(el) || el.id==='picker2col_opener_select_action' ||
+            el.closest(templateGroup) && !manual.field.has(el)) continue;
         const description=fieldDescription(el);
         const edit=el.matches('input,textarea,[contenteditable=true],[contenteditable=plaintext-only],[role=textbox]') && !el.matches('[role=combobox]');
         add(el,description.label,'','',edit,description);
@@ -821,7 +824,7 @@
       const rowNames=new Map(rows.map((row,i)=>{
         const description=row.querySelector('.and-btn,.or-btn,[aria-label*="condition set" i]')?.getAttribute('aria-label') || '';
         const numbers=description.match(/condition set\s+(\d+).*?condition\s+(\d+)/i);
-        return [row,numbers?'그룹 '+numbers[1]+' · 조건 '+numbers[2]:'조건 '+(i+1)];
+        return [row,numbers?msg('rowGroup',numbers[1])+' · '+msg('rowCondition',numbers[2]):msg('rowCondition',i+1)];
       }));
       const entries=[];
       const visited=new Set();
@@ -842,7 +845,7 @@
           for(const option of el.options) {
             if(option.matches(':disabled') || option.hidden || option.closest('optgroup[hidden]')) continue;
             const label=option.label.trim();
-            const title=location+' · 연산자 · '+label;
+            const title=location+' · '+msg('operator')+' · '+label;
             entries.push({el,option,location,title,label:normalize(label),key:normalize(title+' operator '+option.value)});
           }
           continue;
@@ -855,15 +858,15 @@
         const group=el.matches('[id$="btnAddConditionsSet"]') || /add another condition set/i.test(native);
         const remove=/remove condition/i.test(native);
         if(and || or) label=and?'AND':'OR';
-        else if(group) label='OR · 새 조건 그룹 추가';
-        else if(remove) label='조건 삭제';
-        else if(pill && row) label=/for condition set/i.test(native)?'조건 필드':'조건 값';
-        else if(el.id==='condition_name') label='Condition Label';
-        else if(valueInput) label='조건 값 입력';
+        else if(group) label=msg('newGroup');
+        else if(remove) label=msg('removeCondition');
+        else if(pill && row) label=/for condition set/i.test(native)?msg('conditionField'):msg('conditionValue');
+        else if(el.id==='condition_name') label=msg('conditionLabel');
+        else if(valueInput) label=msg('enterConditionValue');
         else if(press) label=text || native || label;
         if(!label) continue;
         const title=[location,label].filter(Boolean).join(' · ');
-        const accessible=pill?title+' · Data Pill Picker':title;
+        const accessible=pill?title+' · '+msg('pillPicker'):title;
         entries.push({el,title,pill,accessible,location,valueInput,join:and?'and':or || group?'or':'',label:normalize(label),
           key:normalize([accessible,native,el.id,group?'group set':'',remove?'remove delete':''].join(' ')),
           edit:edit && !press && !select && !pill,press:press && !select && !pill,structure:and || or || group,remove});
@@ -875,12 +878,12 @@
         const entries=actionFields(card);
         const toggle=card.querySelector('#adv_trigger_toggle_button');
         if(toggle && enabled(toggle)) {
-          const title='Advanced Options · '+(toggle.getAttribute('aria-expanded')==='true'?'접기':'펼치기');
+          const title='Advanced Options · '+(toggle.getAttribute('aria-expanded')==='true'?msg('collapse'):msg('expand'));
           entries.push({el:toggle,title,label:'advanced options',key:normalize(title+' 고급 옵션'),press:true,structure:true});
         }
         for(const spec of stepCommands.filter(s=>['done','cancel','delete'].includes(s.id))) {
           const el=stepButton(card,spec);
-          if(el && enabled(el)) entries.push({el,title:spec.label,label:spec.id,key:spec.id,press:true});
+          if(el && enabled(el)) entries.push({el,title:spec.label,label:spec.id,key:normalize(spec.id+' '+spec.label),press:true});
         }
         return entries;
       }
@@ -888,7 +891,7 @@
     }
     function beginField() {
       const active=deepActive(), card=state.card;
-      if (!card) {say('먼저 조건이 있는 카드를 선택하세요.');return;}
+      if (!card) {say(msg('selectConditionStep'));return;}
       for (const el of manual.field) if (!el.isConnected) manual.field.delete(el);
       for (const id of fieldBindings.get(cardKey(card)) || []) {
         const replacement=card.querySelector('#'+CSS.escape(id));
@@ -924,11 +927,11 @@
       if (!target && picks.length) {
         showFinder(fieldEntries(card,picks));return;
       }
-      if (!target) {say('필드 선택기를 찾지 못했습니다. 도움말에서 필드 연결을 사용하세요.');return;}
+      if (!target) {say(msg('noFieldPicker'));return;}
       openPicker(target,'field');
     }
     function openPicker(el,kind,seed='',title='',choice=null,openAction=false,preferredCategory='') {
-      if (!enabled(el)) {closeChoices();say('대상이 바뀌었습니다. 위치를 다시 선택하세요.');return;}
+      if (!enabled(el)) {closeChoices();say(msg('targetChanged'));return;}
       const owner=cardOf(el) || state.card;
       const placement=kind==='add' ? insertionPosition(el) : '';
       const quickOrigin=state.quickOrigin;
@@ -954,12 +957,12 @@
       }
       if (el.matches('.select2-container')) {
         const opener=el.querySelector('.select2-choice,.select2-choices');
-        if (!opener) {state.picker=null;say('Table 선택 버튼을 찾지 못했습니다.');return;}
+        if (!opener) {state.picker=null;say(msg('noTable'));return;}
         // Select2 3.x opens on primary mousedown, before a click is delivered.
         opener.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,view:window,button:0,buttons:1}));
         invalidate();
         focusPicker();
-        if(!choice) say('필드 선택 · '+title);
+        if(!choice) say(msg('pickField')+' · '+title);
         return;
       }
       focus(el);
@@ -968,7 +971,7 @@
         state.picker=null;return;
       }
       el.click();invalidate();focusPicker();
-      say(kind==='add'?'단계 추가 · Studio 선택기에서 항목을 고르세요.':'필드 선택 · '+title,description?.pill && el);
+      say(kind==='add'?msg('chooseStep'):msg('pickField')+' · '+title,description?.pill && el);
     }
     function updateReference(p) {
       if(!p?.el.matches('.select2-reference') || !p.surface?.matches('.select2-drop-active')) return;
@@ -977,11 +980,11 @@
       const text=notice?.textContent.trim() || '';
       const labels=[...surface.querySelectorAll('li.select2-result-selectable .select2-result-label')];
       let message;
-      if(/forbidden|access denied|permission denied|insufficient (?:access|permission)|unauthorized|\b40[13]\b|권한/i.test(text)) message='참조 검색 권한이 없습니다.';
-      else if(notice?.matches('.select2-error,.select2-searching-error,[role=alert]') || /failed|error|오류/i.test(text)) message='참조 검색에 실패했습니다.';
-      else if(notice?.matches('.select2-no-results')) message='검색 결과가 없습니다.';
-      else if(notice?.matches('.select2-searching') || surface.querySelector('input.select2-active')) message='참조 검색 중…';
-      else if(labels.length) message='참조 검색 · ↑↓ 이동 · Enter 선택 · Esc 돌아가기';
+      if(/forbidden|access denied|permission denied|insufficient (?:access|permission)|unauthorized|\b40[13]\b|권한/i.test(text)) message=msg('referenceDenied');
+      else if(notice?.matches('.select2-error,.select2-searching-error,[role=alert]') || /failed|error|오류/i.test(text)) message=msg('referenceFailed');
+      else if(notice?.matches('.select2-no-results')) message=msg('referenceEmpty');
+      else if(notice?.matches('.select2-searching') || surface.querySelector('input.select2-active')) message=msg('referenceLoading');
+      else if(labels.length) message=msg('referenceKeys');
       if(message && p.notice!==message) {p.notice=message;say(message);}
       if(!p.el.id.startsWith('s2id_field_values_assigned_to_') || !labels.length) return;
       const seen=new Set(), repeated=new Set();
@@ -1004,7 +1007,7 @@
           record?.text===label.textContent.trim() && /^[a-f0-9]{32}$/i.test(record.key));
         const current=()=>!abort.signal.aborted && state.picker===p && shown(p.surface);
         if(!current()) return;
-        if(matched.length<labels.length) say('동명이인 · 일부 결과의 사용자 ID를 확인할 수 없습니다.');
+        if(matched.length<labels.length) say(msg('missingUserId'));
         const mark=(label,record,value)=>{
           if(!p.surface.contains(label) || label.id!==record.option || label.textContent.trim()!==record.text) return;
           p.identityLabels ||= new Map();
@@ -1034,11 +1037,11 @@
           (p.categoryScope.contains(b) || !p.previousCategories.has(b)));
         if(categories.length) {
           p.categories=categories;p.ready=true;
-          captionText.textContent='삽입 위치 · '+p.placement;draw();
+          captionText.textContent=msg('insertion')+' · '+p.placement;draw();
           const action=categories.find(b=>b.id==='flow_action_newAction');
           if(p.openAction && action) {p.openAction=false;action.click();return;}
           focus(categories.find(button=>button.id===p.preferredCategory) || action || categories[0],rowCaption);
-          say('단계 종류 · ← → 이동 · Enter 열기 · Esc 삽입 위치');return;
+          say(msg('categoryKeys'));return;
         }
         // The insertion control and the three category buttons can render in different updates.
         return;
@@ -1063,7 +1066,7 @@
         p.searchInput=input;
         p.ready=true;p.searchUntil ??= performance.now()+700;
         focus(input);
-        say('검색창에 이름을 입력하세요 · ↓ 목록 탐색 · Enter 선택'+(p.category?' · Esc 단계 종류':''));return;
+        say(msg('typeToSearch')+(p.category?' · '+msg('backToTypes'):''));return;
       }
       const id=p.el.getAttribute('aria-controls');
       const linked=id && p.el.getRootNode().getElementById?.(id);
@@ -1083,10 +1086,10 @@
           (li.querySelector('.select2-result-label')?.textContent || '').trim()===choice.label.trim());
         const target=siblings?.length===candidates.length && candidates[siblings.indexOf(choice)];
         p.ready=true;p.choice=null;
-        if(!target) {say('Studio 목록이 바뀌었습니다. 현재 목록에서 값을 선택하세요.');return;}
+        if(!target) {say(msg('studioListChanged'));return;}
         const label=target.querySelector('.select2-result-label');
         for(const type of ['mousemove','mouseup']) label.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,view:window,button:0}));
-        say(choice.label+' 선택');invalidate();return;
+        say(msg('selectedValue',choice.label));invalidate();return;
       }
       if (input) {
         p.searchInput=input;
@@ -1130,7 +1133,7 @@
     }
     function focusLogic(item) {
       focus(item);mark('field',item);
-      say('Flow Logic · '+name(item.querySelector('button') || item)+' · ↑↓ 이동 · Enter 추가 · Esc 단계 종류');
+      say('Flow Logic · '+name(item.querySelector('button') || item)+' · '+msg('logicKeys'));
     }
     function commitResult(p,button) {
       // Trigger selection can populate an existing placeholder card. Its click
@@ -1185,13 +1188,13 @@
       if(!editor && f.landed) return;
       f.card=card;f.key=cardKey(card);f.landed=true;
       select(card);
-      if(!editor) {focus(card);say('추가된 단계로 이동했습니다.');return;}
+      if(!editor) {focus(card);say(msg('newStepFocused'));return;}
       if(!f.editing) {clearTimeout(followTimer);followTimer=setTimeout(cancelFollow,650);}
       f.editing=true;
       const target=editor.matches('.select2-container') ? editor.querySelector('.select2-focusser,.select2-choice') || editor : editor;
       if(active && inputs.includes(active)) {mark('field',active.closest('.select2-container') || active);reveal(active);}
       else focus(target);
-      say('단계 편집 · '+(groupLabel(deepActive()) || fieldLabel(deepActive()) || '입력'));
+      say(msg('editStep')+' · '+(groupLabel(deepActive()) || fieldLabel(deepActive()) || msg('input')));
     }
     function clearIdentities(p) {
       for(const [label,original] of p?.identityLabels || []) {
@@ -1221,8 +1224,8 @@
         }
         p.category=null;p.categoryScope=null;p.categories=buttons;p.ready=true;
         p.surface=null;p.searchInput=null;p.returnCategory=null;p.closingMenu=false;
-        captionText.textContent='삽입 위치 · '+p.placement;draw();focus(previous,rowCaption);
-        say('단계 종류 · ← → 이동 · Enter 열기 · Esc 삽입 위치');return;
+        captionText.textContent=msg('insertion')+' · '+p.placement;draw();focus(previous,rowCaption);
+        say(msg('categoryKeys'));return;
       }
       // Some Studio rows are removed along with their menu. Reopen the same slot.
       const slot=insertionFor(p);
@@ -1246,7 +1249,7 @@
       const origin=p.quickOrigin?.isConnected ? p.quickOrigin : p.owner?.isConnected ? p.owner : document.body;
       if(performance.now()>until) {
         insertionReturn=null;
-        if(!state.position) {focus(origin);say('삽입 위치가 바뀌어 이전 위치로 돌아왔습니다.');}
+        if(!state.position) {focus(origin);say(msg('positionChanged'));}
         return;
       }
       const slot=insertionFor(p);
@@ -1271,7 +1274,7 @@
       const current=cardOf(deepActive());
       if (p.kind==='add') {
         const added=index().cards.filter(c=>!p.cardsBefore.has(c));
-        if (added.length===1) {select(added[0]);focus(added[0]);say('추가된 단계로 이동했습니다.');return;}
+        if (added.length===1) {select(added[0]);focus(added[0]);say(msg('newStepFocused'));return;}
       }
       if (current && current!==p.owner) {select(current);return;}
       if (p.owner?.isConnected) select(p.owner);
@@ -1288,7 +1291,7 @@
     function navigate(key) {
       const insertions=insertionTargets();
       const stops=[...new Set([...index().cards,...insertions])].sort(canvasOrder);
-      if(!stops.length) {say('이동할 단계나 삽입 위치가 없습니다.');return;}
+      if(!stops.length) {say(msg('noStops'));return;}
       const active=deepActive();
       const current=state.position || (insertions.includes(active) ? active : state.card);
       const i=stops.indexOf(current);
@@ -1298,7 +1301,7 @@
         if(!state.choices) state.quickOrigin=cardShortcutTarget(active) ? active : state.card || document.body;
         state.choices=insertions;state.choiceKind='add';preview(insertions.indexOf(next));return;
       }
-      closeChoices();select(next);focus(next);say(stepTitle(next) || '단계 선택됨');
+      closeChoices();select(next);focus(next);say(stepTitle(next) || msg('selectedStep'));
     }
     // Compare hosts at shadow boundaries so a nested canvas stays in page order.
     function canvasOrder(a,b) {
@@ -1328,8 +1331,8 @@
       if(active && ui.contains(active) && active!==query && finder.hidden && commands.hidden) return;
       let message='';
       if(commands.hidden && finder.hidden && !state.binding && !state.choices && !state.picker && !deletion?.dialog) {
-        if(cardShortcutTarget(active)) message='↑↓ 단계·삽입 위치 이동 · Enter 편집 · N 추가 · F 필드 검색';
-        else if(active && state.card && cardOf(active)===state.card && active.matches(interactive)) message='값 입력 · Esc 단계로';
+        if(cardShortcutTarget(active)) message=msg('cardKeys');
+        else if(active && state.card && cardOf(active)===state.card && active.matches(interactive)) message=msg('inputKeys');
       }
       if(hint.textContent!==message) hint.textContent=message;
       hint.hidden=!message;
@@ -1379,7 +1382,7 @@
       if (e.defaultPrevented) return;
       const el=e.composedPath()[0], k=e.key;
       const searching=el===query || el===state.picker?.searchInput;
-      if(!searching || k.length!==1 && !e.isComposing && !['Backspace','Delete','Process','Dead'].includes(k)) releaseViewport();
+      if(!searching || k.length!==1 && !e.isComposing && !['Backspace',msg('delete'),'Process','Dead'].includes(k)) releaseViewport();
       if(state.picker?.ready) state.picker.searchUntil=0;
       if(deletion) {
         syncDeleteModal();
@@ -1416,7 +1419,7 @@
         if (id && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
           take();if(!e.repeat) run(id);return;
         }
-        if (k==='Escape') {take();commands.hidden=true;say(state.card ? stepTitle(state.card) : prefix+'로 명령 열기');return;}
+        if (k==='Escape') {take();commands.hidden=true;say(state.card ? stepTitle(state.card) : msg('openWith',prefix));return;}
         if (!['Control','Meta','Shift','Alt','Tab'].includes(k) && !e.composedPath().includes(commands)) commands.hidden=true;
       }
       if (e.composedPath().includes(host)) return;
@@ -1427,7 +1430,7 @@
       if (k==='Escape' && (state.binding || state.choices)) {
         take();const origin=state.quickOrigin || state.previewOrigin;state.binding=null;closeChoices();
         if(origin?.isConnected) focus(origin);
-        say('취소했습니다.');return;
+        say(msg('cancelled'));return;
       }
       if (state.picker?.surface && !shown(state.picker.surface)) restore();
       if (state.picker) {
@@ -1638,7 +1641,7 @@
         const scope=chosen.closest('.instance-type-new') || chosen.parentElement;
         const picker=p?.kind==='add' ? p : {kind:'add',el:scope.querySelector('#flow_action_btnToggleAction') || chosen,owner:state.card,cardsBefore:new Set(index().cards)};
         picker.placement ||= insertionPosition(picker.el);
-        captionText.textContent='삽입 위치 · '+picker.placement;clearRow();
+        captionText.textContent=msg('insertion')+' · '+picker.placement;clearRow();
         state.picker=picker;
         picker.row=scope;picker.category=chosen;picker.categoryScope=null;picker.categories=null;picker.ready=false;picker.surface=null;
         picker.searchInput=null;
@@ -1654,7 +1657,7 @@
       const el=kind==='card' ? owner || ancestor(raw,n=>n.matches('article,li,[role=group]') && !n.querySelector(cards+',main,section,form + form')) :
         fieldTarget(raw);
       if (!el || (kind==='field' && (!owner || !enabled(el)))) {
-        say('연결할 수 없습니다. 펼쳐진 단계 안에서 카드나 사용 가능한 필드 버튼을 다시 지정하세요.');return;
+        say(msg('linkFailed'));return;
       }
       manual[kind].add(el);cache=null;
       if(kind==='card') {select(el);focus(el);}
@@ -1666,15 +1669,15 @@
         }
       }
       const description=kind==='field' && fieldDescription(el);
-      say('연결됨 · '+(description?.title || fieldLabel(el)).slice(0,75),description?.pill && el,
-        ' · '+(kind==='card'?'↑↓로 이동하세요.':prefix+' 후 '+(kind==='add'?'N':'F')+'를 누르세요.'));
+      say(msg('linked')+' · '+(description?.title || fieldLabel(el)).slice(0,75),description?.pill && el,
+        ' · '+(kind==='card'?msg('moveKeys'):msg('thenKey',prefix,kind==='add'?'N':'F')));
     },true);
     on(ui,'click',e=>{
       const command=e.target.closest('[data-command]');
       if (command) {run(command.dataset.command);return;}
       if (e.target.id==='off') {stop(true);return;}
       if (e.target.id==='guide') get('help').hidden=!get('help').hidden;
-      if (e.target.dataset.bind) {commands.hidden=true;state.binding=e.target.dataset.bind;say('연결할 화면 요소를 클릭하세요. Esc로 취소합니다.');focus(state.card || document.body);}
+      if (e.target.dataset.bind) {commands.hidden=true;state.binding=e.target.dataset.bind;say(msg('chooseLink'));focus(state.card || document.body);}
     });
     const redraw=()=>{cancelAnimationFrame(repaint);repaint=requestAnimationFrame(draw);};
     const rowSize=new ResizeObserver(redraw);
@@ -1687,7 +1690,7 @@
       commandCard=state.card;
       for(const spec of stepCommands) commands.querySelector('[data-command='+spec.id+']').hidden=!stepButton(commandCard,spec);
       if (!document.hasFocus() && state.card) focus(state.card);
-      say(state.card?(stepTitle(state.card) || '현재 단계')+' · 명령 키 선택 · Esc 닫기':'단계 미인식 · 도움말에서 카드 연결 또는 N으로 삽입점 찾기');
+      say(state.card?(stepTitle(state.card) || msg('currentStep'))+' · '+msg('commandKeys'):msg('stepUnrecognized'));
     }
     function run(kind) {
       clearIdentities(state.picker);hideFinder();commands.hidden=true;state.picker=null;cache=null;
@@ -1707,7 +1710,7 @@
       closeChoices();select(null);for(const style of styleNodes.values()) style.remove();host.remove();state.picker=null;
     }};
     const first=cardOf(deepActive()) || index().cards[0];
-    if(first) {select(first);focus(first);say(stepTitle(first) || '단계 선택됨');}
+    if(first) {select(first);focus(first);say(stepTitle(first) || msg('selectedStep'));}
     else if(insertionTargets().length) beginAdd(document.body);
     else arm();
   }

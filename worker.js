@@ -1,4 +1,4 @@
-const idleTitle = "Flow Keys 명령 열기";
+const idleTitle = chrome.i18n.getMessage("openCommands");
 const busy = new Set();
 
 async function indicator(tabId, badge, title) {
@@ -14,7 +14,7 @@ chrome.action.onClicked.addListener(async tab => {
   busy.add(tab.id);
   try {
     if (!tab.url || !/^https:\/\/[^/]+\.service-now\.com\//i.test(tab.url)) {
-      await indicator(tab.id, "PDI", "service-now.com PDI의 Flow 편집 탭에서 실행하세요.");
+      await indicator(tab.id, "PDI", chrome.i18n.getMessage("needPdi"));
       return;
     }
     const results = await chrome.scripting.executeScript({
@@ -24,16 +24,16 @@ chrome.action.onClicked.addListener(async tab => {
     const frame = active || results.filter(f => f.result?.score > 0)
       .sort((a, b) => b.result.score - a.result.score)[0];
     if (!frame) {
-      await indicator(tab.id, "FLOW", "기존 Flow의 편집 화면을 연 뒤 다시 실행하세요.");
+      await indicator(tab.id, "FLOW", chrome.i18n.getMessage("needFlow"));
       return;
     }
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id, documentIds: [frame.documentId] },
       func: () => globalThis.flowKeysController.invoke()
     });
-    await indicator(tab.id, result.result ? "ON" : "", result.result ? "Flow Keys 사용 중 · 편집 명령 열기" : idleTitle);
+    await indicator(tab.id, result.result ? "ON" : "", result.result ? chrome.i18n.getMessage("activeTitle") : idleTitle);
   } catch {
-    await indicator(tab.id, "!", "실행할 수 없습니다. PDI 편집기를 별도 탭에서 열고 사이트 접근 정책을 확인하세요.").catch(() => {});
+    await indicator(tab.id, "!", chrome.i18n.getMessage("cannotRun")).catch(() => {});
   } finally {
     busy.delete(tab.id);
   }

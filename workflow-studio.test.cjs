@@ -1,12 +1,15 @@
 const {chromium}=require(process.env.FK_PLAYWRIGHT || 'playwright');
 const assert=require('node:assert/strict');
 const extension=__dirname;
+const locale = process.env.FK_LOCALE || 'en';
+const korean = /^ko(?:$|[-_])/i.test(locale);
+const ui = (en, ko) => korean ? ko : en;
 const fixture='https://dev-test.service-now.com/now/workflow-studio/builder/flow/example';
 const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test-canvas></test-canvas>';
 (async()=>{
   const ctx=await chromium.launchPersistentContext('',{
     channel:'chromium',executablePath:process.env.FK_BROWSER,headless:true,
-    args:['--enable-unsafe-extension-debugging','--load-extension='+extension],ignoreDefaultArgs:['--disable-extensions']
+    locale, args:['--lang='+locale,'--enable-unsafe-extension-debugging','--load-extension='+extension],ignoreDefaultArgs:['--disable-extensions']
   });
   try {
     const dev=await ctx.browser().newBrowserCDPSession();
@@ -43,6 +46,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       await panel.waitFor({timeout:5000});
     }
     console.log('Real activeTab activation via',native?'registered shortcut':'toolbar action');
+    assert.equal(await panel.getByRole('button',{name:ui('Help','도움말'),exact:true}).count(),1);
     const marked=page.locator('[data-flowkeys-card]');
     assert.equal(await marked.getAttribute('data-step-id'),'1');
     const canvasFocus=()=>page.evaluate(()=>document.querySelector('test-canvas').shadowRoot.activeElement?.getAttribute('aria-label'));
@@ -77,7 +81,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await page.waitForTimeout(150);
     await page.evaluate(()=>{const root=document.querySelector('test-canvas').shadowRoot;const node=root.querySelector('[data-flowkeys-card]');const clone=node.cloneNode(true);clone.removeAttribute('data-flowkeys-card');node.replaceWith(clone);});
     await marked.waitFor({timeout:2000});
-    await page.getByRole('button',{name:'끄기',exact:true}).click();assert.equal(await marked.count(),0);
+    await page.getByRole('button',{name:ui('Turn off','끄기'),exact:true}).click();assert.equal(await marked.count(),0);
     assert.equal(await panel.count(),0);assert.deepEqual(errors,[]);
     await page.evaluate(fixture=>{
       const f=document.createElement('iframe');f.src=fixture+'?frame';document.body.replaceChildren(f);
@@ -89,7 +93,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await dev.send('Extensions.triggerAction',{id,targetId:tabInfo.targetId});
     await child.locator('[data-flowkeys-card]').waitFor();
     await page.keyboard.press('n');
-    await child.getByText('삽입점을 찾지 못했습니다.',{exact:false}).waitFor();
+    await child.getByText(ui('No insertion point found.','삽입점을 찾지 못했습니다.'),{exact:false}).waitFor();
     assert.equal(await page.locator('[data-flowkeys-panel]').count(),0);
     console.log('PASS activeTab same-origin iframe selection and disabled insertion control');
     await page.goto(fixture);
@@ -107,7 +111,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       };
     });
     await dev.send('Extensions.triggerAction',{id,targetId:tabInfo.targetId});
-    await page.getByText(/삽입 위치 · Add Trigger \(1\/2\)/).first().waitFor();
+    await page.getByText(ui(/Insertion point · Add Trigger \(1\/2\)/,/삽입 위치 · Add Trigger \(1\/2\)/)).first().waitFor();
     await page.keyboard.press('ArrowDown');assert.equal(await page.evaluate(()=>document.activeElement.id),'flow_action_btnToggleAction');
     await page.keyboard.press('ArrowUp');assert.equal(await page.evaluate(()=>document.activeElement.id),'flow_trigger_text_toggle');
     await page.keyboard.press('Enter');
@@ -119,7 +123,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await page.keyboard.press('Enter');await page.getByText('Record Created',{exact:true}).waitFor();
     await page.waitForFunction(()=>document.activeElement.getAttribute('aria-label')==='Trigger table');
     await command('n');
-    assert.equal(await page.getByText(/삽입 위치 · Add Trigger/).count(),0);
+    assert.equal(await page.getByText(ui(/Insertion point · Add Trigger/,/삽입 위치 · Add Trigger/)).count(),0);
     console.log('PASS empty Flow → Add Trigger → search focus after Studio autofocus → keyboard Record Created → trigger input');
     await page.goto(fixture);
     if(mac) await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:'MacIntel'});
@@ -139,15 +143,15 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     });
     await dev.send('Extensions.triggerAction',{id,targetId:tabInfo.targetId});
     await page.waitForSelector('.trigger-section .componentInstance[data-flowkeys-card]');
-    await page.getByRole('button',{name:'도움말'}).click();
-    await page.getByRole('button',{name:'카드 연결',exact:true}).click();
+    await page.getByRole('button',{name:ui('Help','도움말')}).click();
+    await page.getByRole('button',{name:ui('Link step','카드 연결'),exact:true}).click();
     await page.locator('#app-floweditor').evaluate(e=>{const label=document.createElement('span');label.textContent='Canvas margin';e.append(label);});
     await page.getByText('Canvas margin').click();
-    await page.getByText(/연결할 수 없습니다/).waitFor();
-    await page.getByRole('button',{name:'필드 연결',exact:true}).click();
+    await page.getByText(ui(/Could not link/,/연결할 수 없습니다/)).waitFor();
+    await page.getByRole('button',{name:ui('Link field','필드 연결'),exact:true}).click();
     await page.locator('.select2-arrow').click();
     assert.equal(await page.locator('.select2-drop').count(),0);
-    await page.getByText(/연결됨 · Select a Table/).waitFor();
+    await page.getByText(ui(/Linked · Select a Table/,/연결됨 · Select a Table/)).waitFor();
     assert.equal(await page.locator('#app-floweditor[data-flowkeys-card]').count(),0);
     await page.locator('.select2-container').evaluate(el=>{
       const replacement=el.cloneNode(true);replacement.removeAttribute('data-flowkeys-focus');el.replaceWith(replacement);
@@ -231,7 +235,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       },25);
     });
     page.setDefaultTimeout(6000);
-    const lookup=page.getByRole('combobox',{name:'필드 검색'});
+    const lookup=page.getByRole('combobox',{name:ui('Find fields','필드 검색')});
     await command('f');await lookup.fill('nothing found');assert.equal(await page.locator('#fk-results [role=option]').count(),1);
     await lookup.press('Enter');await page.waitForFunction(()=>document.activeElement.closest('.select2-drop') && document.activeElement.value==='nothing found');
     await page.keyboard.press('Escape');
@@ -259,7 +263,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await command('n');
     await page.waitForFunction(()=>document.activeElement.id==='flow_action_newAction');
     assert.equal(await page.locator('.instance-type-new').getAttribute('data-visible-at-open'),'true');
-    assert.match(await page.locator('[data-flowkeys-row-caption]').innerText(),/삽입 위치/);
+    assert.match(await page.locator('[data-flowkeys-row-caption]').innerText(),ui(/Insertion point/,/삽입 위치/));
     await page.keyboard.press('ArrowRight');assert.equal(await page.evaluate(()=>document.activeElement.id),'flow_action_newFlowLogic');
     await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.activeElement.matches('.flowlogic-picker-list li') && document.activeElement.textContent==='If');
@@ -333,7 +337,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       const opener=document.createElement('button');opener.id='picker2col_opener_select_action';
       const card=document.querySelector('[data-step-id=added]');card.prepend(opener);opener.focus();
     });
-    await page.waitForFunction(()=>document.querySelector('[data-flowkeys-panel]').shadowRoot.activeElement?.getAttribute('aria-label')==='필드 검색');
+    await page.waitForFunction(label=>document.querySelector('[data-flowkeys-panel]').shadowRoot.activeElement?.getAttribute('aria-label')===label,ui('Find fields','필드 검색'));
     await lookup.fill('Record');await lookup.press('Enter');
     await page.waitForFunction(()=>document.activeElement.id==='new-input');
     function visibleRow(id) {
@@ -368,15 +372,15 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await lookup.fill('journal select');await lookup.press('Enter');
     await page.waitForFunction(()=>document.body.dataset.field==='journal_field' && document.activeElement.closest('.select2-drop'));
     await page.keyboard.press('Escape');
-    await command('f');await lookup.fill('데이터 필');
-    const pillOption=page.getByRole('option',{name:'Approval Reason · Data Pill Picker',exact:true});
+    await command('f');await lookup.fill(ui('data pill','데이터 필'));
+    const pillOption=page.getByRole('option',{name:ui('Approval Reason · Data Pill Picker','Approval Reason · 데이터 필 선택기'),exact:true});
     assert.equal(await pillOption.innerText(),'Approval Reason');
     const original=await page.locator('button[aria-label="Data Pill Picker for Approval Reason"] use').getAttribute('href');
     assert.equal(new URL(await pillOption.locator('use').getAttribute('href'),fixture).href,new URL(original,fixture).href);
     await page.waitForFunction(()=>document.querySelector('[data-flowkeys-panel]').shadowRoot.querySelector('[role=option] svg use')?.getBBox().width>0);
     await lookup.fill('approval reason data pill');await lookup.press('Enter');
     await page.waitForFunction(()=>document.body.dataset.pill==='approval_reason');
-    assert.equal(await panel.locator('output svg[aria-label="Data Pill Picker"]').count(),1);
+    assert.equal(await panel.locator('output svg[aria-label="'+ui('Data Pill Picker','데이터 필 선택기')+'"]').count(),1);
     console.log('PASS delayed Action, label and field visible inside nested scrolling canvas, Tab to offscreen input, contextual Select2 search and named data pill activation');
     await page.evaluate(()=>{
       const opener=document.querySelector('#picker2col_opener_select_trigger');
@@ -437,9 +441,9 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await caption.waitFor();
     const labels=[await caption.innerText()];
     await page.keyboard.press('ArrowDown');labels.push(await caption.innerText());
-    assert(labels.some(text=>text.includes('2. If 분기 안')),labels.join(' / '));
-    assert(labels.some(text=>text.includes('첫 Action 앞')),labels.join(' / '));
-    if(!(await caption.innerText()).includes('분기 안'))await page.keyboard.press('ArrowDown');
+    assert(labels.some(text=>text.includes(ui('Inside the 2. If branch','2. If 분기 안'))),labels.join(' / '));
+    assert(labels.some(text=>text.includes(ui('Before the first action','첫 Action 앞'))),labels.join(' / '));
+    if(!(await caption.innerText()).includes(ui('branch','분기 안')))await page.keyboard.press('ArrowDown');
     const activeRow=page.locator('[data-flowkeys-insertion-row]');
     await page.waitForFunction(()=>document.querySelector('[data-flowkeys-row-caption]')?.hasAttribute('data-inline'));
     const labelRect=await caption.locator('span').boundingBox();
@@ -482,7 +486,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     const between=page.locator('#between-test');
     await between.locator('article a').click();
     await command('n');
-    assert.match(await caption.innerText(),/6\. Update Record 뒤/);
+    assert.match(await caption.innerText(),ui(/After 6\. Update Record/,/6\. Update Record 뒤/));
     assert(await between.locator('[data-isdroppable]').evaluate(el=>{
       const box=el.closest('#app-floweditor').getBoundingClientRect(),r=el.getBoundingClientRect();
       return getComputedStyle(el).opacity==='1' && r.top>=box.top && r.bottom<=box.bottom;
@@ -494,7 +498,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await between.locator('.instance-type-new').evaluate(el=>el.remove());
     await page.waitForFunction(()=>document.activeElement.matches('#between-test [data-isdroppable]'));
     await between.locator('article a').focus();
-    await panel.locator('#key-hint').filter({hasText:'N 추가 · F 필드 검색'}).waitFor();
+    await panel.locator('#key-hint').filter({hasText:ui('N to add · F to find fields','N 추가 · F 필드 검색')}).waitFor();
     for(const firstKey of ['ArrowDown','n']) {
       await between.locator('article a').focus();
       await page.keyboard.press(firstKey);
@@ -508,7 +512,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     }
     await between.locator('article a').focus();
     await page.keyboard.press('n');
-    assert.match(await caption.innerText(),/6\. Update Record 뒤/);
+    assert.match(await caption.innerText(),ui(/After 6\. Update Record/,/6\. Update Record 뒤/));
     await page.keyboard.press('Escape');
     assert(await between.locator('article a').evaluate(el=>document.activeElement===el));
     await page.keyboard.press('n');await page.keyboard.press('Enter');
@@ -517,7 +521,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await between.locator('#action-picker-search-input').evaluate(el=>el.onkeydown=e=>{if(e.key==='Escape') el.closest('.instance-type-new').remove();});
     await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement.matches('#between-test #flow_action_newAction'));
     await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement.matches('#between-test [data-isdroppable]'));
-    assert.match(await caption.innerText(),/6\. Update Record 뒤/);
+    assert.match(await caption.innerText(),ui(/After 6\. Update Record/,/6\. Update Record 뒤/));
     await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement.id==='flow_action_5_expand_form');
     await between.evaluate(el=>el.remove());
     console.log('PASS transparent insertion after selected step 6, visible preview and scoped Action search before existing step 7');
@@ -632,16 +636,16 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     });
     await dev.send('Extensions.triggerAction',{id,targetId:tabInfo.targetId});
     await page.getByRole('link',{name:'Else If'}).press('Enter');
-    const logicQuery=page.getByRole('combobox',{name:'조건 및 버튼 검색'}), rowCount=id=>page.locator('[data-step-id="'+id+'"] .condition-row').count();
+    const logicQuery=page.getByRole('combobox',{name:ui('Find conditions and buttons','조건 및 버튼 검색')}), rowCount=id=>page.locator('[data-step-id="'+id+'"] .condition-row').count();
     await logicQuery.waitFor();await logicQuery.fill('AND');await logicQuery.press('Enter');
     assert.equal(await rowCount('logic1'),2);assert.equal(await rowCount('logic0'),1);
-    await logicQuery.fill('그룹1 조건2 OR');assert.equal(await panel.getByRole('option').count(),1);await logicQuery.press('Enter');
+    await logicQuery.fill(ui('group1 condition2 OR','그룹1 조건2 OR'));assert.equal(await panel.getByRole('option').count(),1);await logicQuery.press('Enter');
     assert.equal(await rowCount('logic1'),3);
-    await logicQuery.fill('새 그룹');await logicQuery.press('Enter');
-    await logicQuery.fill('그룹 2 조건 1 삭제');await logicQuery.press('Enter');
+    await logicQuery.fill(ui('new group','새 그룹'));await logicQuery.press('Enter');
+    await logicQuery.fill(ui('group 2 condition 1 delete','그룹 2 조건 1 삭제'));await logicQuery.press('Enter');
     assert.equal(await rowCount('logic1'),3);
     await logicQuery.press('Escape');await command('f');await logicQuery.fill('operator');assert.equal(await panel.getByRole('option').count(),0);
-    await logicQuery.fill('Condition Label');await logicQuery.press('Enter');
+    await logicQuery.fill(ui('Condition Label','조건 레이블'));await logicQuery.press('Enter');
     assert.equal(await page.evaluate(()=>document.activeElement.id),'condition_name');
     const opSelect=page.locator('[data-step-id=logic1] .condition-row select').first();
     await opSelect.evaluate(el=>{
@@ -649,7 +653,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       const value=document.createElement('div');value.contentEditable='true';el.after(value);
       el.onchange=()=>{el.dataset.committed=el.value;value.hidden=el.value==='ISEMPTY';};
     });
-    await command('f');await logicQuery.fill('연산자');
+    await command('f');await logicQuery.fill(ui('Operator','연산자'));
     assert.equal(await panel.getByRole('option').count(),3);
     await logicQuery.fill('is not');await logicQuery.press('Enter');
     assert.equal(await opSelect.getAttribute('data-committed'),'!=');
@@ -679,8 +683,8 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
         document.body.append(popup);
       };
     });
-    await command('f');await logicQuery.fill('그룹 1 조건 1 is');await logicQuery.press('Enter');
-    const choiceQuery=page.getByRole('combobox',{name:'목록 값 검색'});
+    await command('f');await logicQuery.fill(ui('group 1 condition 1 is','그룹 1 조건 1 is'));await logicQuery.press('Enter');
+    const choiceQuery=page.getByRole('combobox',{name:ui('Find a value','목록 값 검색')});
     await choiceQuery.fill('High');assert.equal(await panel.getByRole('option').count(),1);
     await choiceQuery.press('Enter');
     assert.equal(await page.locator('#condition').inputValue(),'2');
@@ -696,8 +700,8 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       };
     });
     await page.locator('#adv_trigger_toggle_button').focus();await command('f');
-    const triggerQuery=page.getByRole('combobox',{name:'필드 검색'});
-    await triggerQuery.fill('고급 옵션');await triggerQuery.press('Enter');
+    const triggerQuery=page.getByRole('combobox',{name:ui('Find fields','필드 검색')});
+    await triggerQuery.fill(ui('Advanced Options','고급 옵션'));await triggerQuery.press('Enter');
     await triggerQuery.fill('Run session');assert.equal(await panel.getByRole('option').count(),1);
     await triggerQuery.fill('Advanced Options');await triggerQuery.press('Enter');
     await triggerQuery.fill('Run session');assert.equal(await panel.getByRole('option').count(),0);
@@ -751,7 +755,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await page.waitForFunction(()=>document.activeElement.matches('.select2-drop input') && document.activeElement.value==='Short description');
     assert.equal(await dynamic.locator('.colrow').count(),1);
     await page.locator('.select2-drop button').press('Enter');
-    await dynamic.locator('textarea').focus();await command('f');await lookup.fill('short_description 값');await lookup.press('Enter');
+    await dynamic.locator('textarea').focus();await command('f');await lookup.fill(ui('short_description value','short_description 값'));await lookup.press('Enter');
     await page.keyboard.type('dynamic QA');assert.equal(await dynamic.locator('textarea').inputValue(),'dynamic QA');
     await command('f');await lookup.fill('Field Values');await addFieldResult.waitFor();await lookup.press('Enter');
     await page.waitForFunction(()=>document.activeElement.matches('.select2-drop input'));
@@ -806,12 +810,12 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     },people);
     const openPerson=async()=>{
       await dynamic.locator('#fixture-person').focus();await command('f');
-      await lookup.fill('assigned_to 값');await lookup.press('Enter');
+      await lookup.fill(ui('assigned_to value','assigned_to 값'));await lookup.press('Enter');
       await page.waitForFunction(()=>document.activeElement.id==='fixture-person_search');
     };
     await openPerson();
     const personQuery=page.locator('#fixture-person_search');
-    for(const [q,msg] of [['load','참조 검색 중…'],['empty','검색 결과가 없습니다.'],['denied','참조 검색 권한이 없습니다.'],['error','참조 검색에 실패했습니다.']]) {
+    for(const [q,msg] of [['load',ui('Searching records…','참조 검색 중…')],['empty',ui('No records found.','검색 결과가 없습니다.')],['denied',ui('You don’t have permission to search these records.','참조 검색 권한이 없습니다.')],['error',ui('The record search failed.','참조 검색에 실패했습니다.')]]) {
       await personQuery.fill(q);await panel.getByText(msg,{exact:true}).waitFor();
     }
     await personQuery.press('Escape');

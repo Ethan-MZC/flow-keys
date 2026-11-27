@@ -1,0 +1,320 @@
+{
+  "languageTag": {
+    "message": "en"
+  },
+  "description": {
+    "message": "Navigate steps, search fields, and edit conditions with the keyboard in ServiceNow Workflow Studio."
+  },
+  "openCommands": {
+    "message": "Open Flow Keys commands"
+  },
+  "commandDescription": {
+    "message": "Open commands · N to add a step · F to find a field"
+  },
+  "needPdi": {
+    "message": "Open a flow editor on your service-now.com instance."
+  },
+  "needFlow": {
+    "message": "Open an existing flow for editing and try again."
+  },
+  "activeTitle": {
+    "message": "Flow Keys is on · Open commands"
+  },
+  "cannotRun": {
+    "message": "Open the editor in its own tab and check the extension’s site access."
+  },
+  "help": {
+    "message": "Help"
+  },
+  "turnOff": {
+    "message": "Turn off"
+  },
+  "manualHelp": {
+    "message": "If a control is missing, choose what to link, then click it on the page."
+  },
+  "linkCard": {
+    "message": "Link step"
+  },
+  "linkInsertion": {
+    "message": "Link insertion point"
+  },
+  "linkField": {
+    "message": "Link field"
+  },
+  "helpKeys": {
+    "message": "On a step, press N to add or F to find fields. Press $1 for commands."
+  },
+  "addStep": {
+    "message": "Add step"
+  },
+  "pickField": {
+    "message": "Select field"
+  },
+  "findFields": {
+    "message": "Find fields"
+  },
+  "findFieldsHint": {
+    "message": "Search by field name or current value"
+  },
+  "searchNewField": {
+    "message": "Search for “$1” in a new field"
+  },
+  "resultsFound": {
+    "message": "Matches: $1 · ↑↓ to move · Enter to select · Esc to go back"
+  },
+  "noMatches": {
+    "message": "No matches · Esc to go back"
+  },
+  "findConditions": {
+    "message": "Find conditions and buttons"
+  },
+  "findConditionsHint": {
+    "message": "Search for a condition, AND, OR, or a button"
+  },
+  "editorChanged": {
+    "message": "The editor has changed. Press F to search again."
+  },
+  "listChanged": {
+    "message": "The list has changed. Search again."
+  },
+  "operatorsChanged": {
+    "message": "Available operators have changed. Press F to search again."
+  },
+  "enterConditionValue": {
+    "message": "Enter condition value"
+  },
+  "findValues": {
+    "message": "Find a value"
+  },
+  "pageChanged": {
+    "message": "The page has changed. Use ↑↓ to select a step again."
+  },
+  "dataPill": {
+    "message": "Data pill"
+  },
+  "fieldPicker": {
+    "message": "Field picker"
+  },
+  "beforeFirst": {
+    "message": "Before the first action"
+  },
+  "insideBranch": {
+    "message": "Inside the $1 branch"
+  },
+  "insideStep": {
+    "message": "Inside $1"
+  },
+  "afterStep": {
+    "message": "After $1"
+  },
+  "beforeStep": {
+    "message": "Before $1"
+  },
+  "firstStep": {
+    "message": "First step"
+  },
+  "insertion": {
+    "message": "Insertion point"
+  },
+  "quickInsertKeys": {
+    "message": "↑↓ to move · Enter for actions · → for step types · Esc to cancel"
+  },
+  "chooseKeys": {
+    "message": "↑↓ to move · Enter to open · Esc to cancel"
+  },
+  "annotationKeys": {
+    "message": "Annotation · Enter to save · Esc to close"
+  },
+  "openAnnotation": {
+    "message": "Press Enter to open the annotation"
+  },
+  "deleteClosed": {
+    "message": "Deletion dialog closed."
+  },
+  "removed": {
+    "message": "Step removed."
+  },
+  "deleteKeys": {
+    "message": "← Cancel · → Delete · Enter to confirm · Esc to cancel"
+  },
+  "checkDelete": {
+    "message": "Check the selected step in Studio’s deletion dialog."
+  },
+  "commandUnavailable": {
+    "message": "$1 is unavailable for this step."
+  },
+  "currentStep": {
+    "message": "Current step"
+  },
+  "stepChanged": {
+    "message": "The step has changed. Open commands again."
+  },
+  "openDelete": {
+    "message": "Open deletion dialog"
+  },
+  "noInsertion": {
+    "message": "No insertion point found. Open Help and choose Link insertion point."
+  },
+  "field": {
+    "message": "Field"
+  },
+  "value": {
+    "message": "Value"
+  },
+  "rowGroup": {
+    "message": "Group $1"
+  },
+  "rowCondition": {
+    "message": "Condition $1"
+  },
+  "operator": {
+    "message": "Operator"
+  },
+  "newGroup": {
+    "message": "OR · Add a new condition group"
+  },
+  "removeCondition": {
+    "message": "Delete condition"
+  },
+  "conditionField": {
+    "message": "Condition field"
+  },
+  "conditionValue": {
+    "message": "Condition value"
+  },
+  "collapse": {
+    "message": "Collapse"
+  },
+  "expand": {
+    "message": "Expand"
+  },
+  "selectConditionStep": {
+    "message": "Select a step with conditions first."
+  },
+  "noFieldPicker": {
+    "message": "No field picker found. Open Help and choose Link field."
+  },
+  "targetChanged": {
+    "message": "The target has changed. Select the insertion point again."
+  },
+  "noTable": {
+    "message": "Could not find the table selector."
+  },
+  "chooseStep": {
+    "message": "Add step · Choose an item in the Studio picker."
+  },
+  "referenceDenied": {
+    "message": "You don’t have permission to search these records."
+  },
+  "referenceFailed": {
+    "message": "The record search failed."
+  },
+  "referenceEmpty": {
+    "message": "No records found."
+  },
+  "referenceLoading": {
+    "message": "Searching records…"
+  },
+  "referenceKeys": {
+    "message": "Record search · ↑↓ to move · Enter to select · Esc to go back"
+  },
+  "missingUserId": {
+    "message": "Duplicate names · User IDs are unavailable for some results."
+  },
+  "categoryKeys": {
+    "message": "Step type · ← → to move · Enter to open · Esc for insertion point"
+  },
+  "typeToSearch": {
+    "message": "Type a name to search · ↓ for results · Enter to select"
+  },
+  "backToTypes": {
+    "message": "Esc for step types"
+  },
+  "studioListChanged": {
+    "message": "The Studio list has changed. Choose a value from the current list."
+  },
+  "selectedValue": {
+    "message": "Selected $1"
+  },
+  "logicKeys": {
+    "message": "↑↓ to move · Enter to add · Esc for step types"
+  },
+  "newStepFocused": {
+    "message": "Moved to the new step."
+  },
+  "editStep": {
+    "message": "Edit step"
+  },
+  "input": {
+    "message": "Input"
+  },
+  "positionChanged": {
+    "message": "The insertion point changed. Returned to the previous position."
+  },
+  "noStops": {
+    "message": "No steps or insertion points to navigate."
+  },
+  "selectedStep": {
+    "message": "Step selected"
+  },
+  "cardKeys": {
+    "message": "↑↓ for steps and insertion points · Enter to edit · N to add · F to find fields"
+  },
+  "inputKeys": {
+    "message": "Enter a value · Esc to return to the step"
+  },
+  "openWith": {
+    "message": "Press $1 to open commands"
+  },
+  "cancelled": {
+    "message": "Cancelled."
+  },
+  "linkFailed": {
+    "message": "Could not link the control. Choose a step or an available field button inside an expanded step."
+  },
+  "linked": {
+    "message": "Linked"
+  },
+  "moveKeys": {
+    "message": "Use ↑↓ to move."
+  },
+  "thenKey": {
+    "message": "Press $1, then $2."
+  },
+  "chooseLink": {
+    "message": "Click the control to link. Press Esc to cancel."
+  },
+  "commandKeys": {
+    "message": "Choose a command · Esc to close"
+  },
+  "stepUnrecognized": {
+    "message": "No step detected. Use Help to link a step or press N to find an insertion point."
+  },
+  "duplicate": {
+    "message": "Duplicate"
+  },
+  "annotation": {
+    "message": "Annotation"
+  },
+  "done": {
+    "message": "Done"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "delete": {
+    "message": "Delete"
+  },
+  "pillPicker": {
+    "message": "Data Pill Picker"
+  },
+  "conditionLabel": {
+    "message": "Condition Label"
+  },
+  "fieldValues": {
+    "message": "Field Values"
+  },
+  "addFieldValue": {
+    "message": "Add field value"
+  }
+}
