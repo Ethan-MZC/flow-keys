@@ -2,7 +2,7 @@
 
 Edit ServiceNow flows from your keyboard. Flow Keys highlights the active step, keeps it in view, and lets you search actions, fields, and data pills in Workflow Studio.
 
-[Release notes](RELEASE_NOTES.md)
+[Release notes on GitHub](https://github.com/Ethan-MZC/flow-keys/releases)
 
 ## Tested environments
 
