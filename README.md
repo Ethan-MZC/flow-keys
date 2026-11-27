@@ -27,19 +27,24 @@ To update, pull the latest changes, reload the extension, and refresh the editor
 
 | When | Keys | What happens |
 | --- | --- | --- |
-| On the canvas | ↑ / ↓ | Move between steps and insertion points, including empty branches. |
+| On the canvas | ↑ / ↓ | Move between steps, stage positions, and insertion points, including empty branches. |
 | On a step | Enter / F | Open the step or search its fields and controls. |
-| Adding a step | N, then Enter | Jump to an insertion point and search actions. On **Add Trigger**, search triggers instead. |
-| At an insertion point | →, then ← / → | Choose Action, Flow Logic, or Subflow. Press Enter to browse. |
-| In a picker | Type, ↑ / ↓, Enter | Filter and select. While browsing results, type to keep searching or press `/` to replace the query. |
-| In a menu or picker | Esc | Return to the previous choice or step. |
+| Adding a step | N, then Enter | Jump to an insertion point and show the step types. On **Add Trigger**, open trigger search. |
+| In the step type chooser | ← / →, then Enter | Choose Action, Flow Logic, or Subflow. Esc returns to the insertion point. |
+| In a picker | Type, ↑ / ↓, Enter | Filter and select. The highlighted field result also outlines and reveals its control on the canvas. While browsing results, type to keep searching or press `/` to replace the query. |
+| In a field opened from search | Esc | Return to the previous field list with its query and selection. Esc again returns to the card. Reopen with F to resume searching. |
+| After choosing a dropdown value or data pill, or on a checkbox or radio button | F | Search the same step’s fields. Type to replace the previous query. |
+| While editing a text field | F2 | Go directly to field search. Ordinary letters continue editing the value. |
+| At a stage position | Enter | Open the stage chooser. Tab to New Stage for its form. Esc returns to the chooser, then to the stage position. |
+| On a card or its header | E / C / X | Done, Cancel, or open the step’s deletion dialog with Cancel focused. |
+| Inside a step form | ⌘+Enter / Ctrl+Enter | Invoke the current step’s available Done button on macOS / Windows. |
 | In the command menu | D / A / E / C / X | Duplicate, annotate, finish, cancel, or open the selected step’s deletion dialog. |
 
 **Try it:** Open **Ask For Approval**, press **F**, and type `journal select` to reach the Journal Field selector. In an **If** step, search `group 1 condition 2 OR` to add a condition to that specific row.
 
 ## Language and access
 
-The extension follows Chrome’s display language. English and Korean are included, with English as the fallback. Field names, record values, and native menus use the language of your ServiceNow instance.
+The extension follows Chrome’s display language. English and Korean are included, with English as the fallback. Flow Keys uses English for its field and condition labels in both languages. Field names supplied by Studio, record values, and native menus follow your instance.
 
 Flow Keys uses `activeTab` and `scripting` when you activate it. Duplicate assignee names may trigger a lookup on your own instance using your existing access. If a control is missing, use **Help** to link it for the current tab.
 

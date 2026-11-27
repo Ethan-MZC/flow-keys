@@ -117,7 +117,7 @@
     "message": "Insertion point"
   },
   "quickInsertKeys": {
-    "message": "↑↓ to move · Enter for actions · → for step types · Esc to cancel"
+    "message": "↑↓ to move · Enter or → to choose step type · Esc to cancel"
   },
   "chooseKeys": {
     "message": "↑↓ to move · Enter to open · Esc to cancel"
@@ -258,7 +258,7 @@
     "message": "Step selected"
   },
   "cardKeys": {
-    "message": "↑↓ for steps and insertion points · Enter to edit · N to add · F to find fields"
+    "message": "↑↓ for steps and insertion points · Enter to edit · N to add · F to find fields · E Done · C Cancel · X Delete"
   },
   "inputKeys": {
     "message": "Enter a value · Esc to return to the step"
@@ -316,5 +316,17 @@
   },
   "addFieldValue": {
     "message": "Add field value"
+  },
+  "stageKeys": {
+    "message": "↑↓ move · Enter edit Stage"
+  },
+  "stageEditKeys": {
+    "message": "Tab between Stage controls · Esc back to Stage position"
+  },
+  "escTo": {
+    "message": "Esc back to $1"
+  },
+  "fieldList": {
+    "message": "field list"
   }
 }

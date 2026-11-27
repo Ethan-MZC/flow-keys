@@ -9,6 +9,17 @@ Use this checklist to test a specific Flow Keys build in ServiceNow Workflow Stu
 | Brazil Patch 2, original development PDI | Development checks covered Record Created triggers, If conditions, action field search, data pills, and navigation between insertion points and step types. | Repeat the cases below with the same extension build used on Australia to compare releases. |
 | Australia Patch 6 (`patch6w39`), Windows Chrome, 2026-11-27 | In the fresh draft `Flow Keys QA - Australia 2026-11-27`, Enter opened trigger search. The Incident Created trigger and Ask For Approval action persisted after reload. In the action, `F` and `journal select` returned one Journal Field result. Enter opened its picker and Esc returned focus to that field. | The run included clicks on the toolbar icon and action result. The keyboard-only path, flow execution, and external spokes still need verification. Studio briefly reopened the draft read-only. Reloading and choosing **Edit flow** restored editing. The cause is unknown. |
 
+## Keyboard navigation check, 2026-11-27
+
+The local development build was loaded in macOS Chrome (Korean UI) and tested in the inactive PDI draft `Flow Keys QA - Keyboard navigation 2026-11-27`.
+
+| Check | Observed result |
+| --- | --- |
+| Ask For Approval | Searched for `approval reason`, entered its editor, and pressed Esc. The query, selected result, and canvas highlight returned. A second Esc focused the action card. |
+| Form controls | X opened the native deletion dialog with Cancel focused. Esc returned to the card. C closed the action form. F reopened field search and Command+Enter from the Approval Reason editor invoked Done and returned to the card. |
+| Stage | Created a stage in the inline editor. Done focused its replacement stage button. Esc from New Stage returned to its chooser, a second Esc focused the stage position, and Down selected the next action. |
+| Record Created | Compared extension off/on and mouse/Enter in the QA draft. The trigger form remained open with Cancel and Done available. Both a native mouse selection with the extension off and a keyboard selection with it on displayed a transient `Saving...` indicator. A separate rapid cancel-and-retry produced a Studio error page once. Refresh and Edit flow restored the draft. Its cause was not established. |
+
 ## Run setup
 
 1. Create a new draft flow for each environment and run. Record its name, the instance build from `stats.do`, the loaded extension version from `chrome://extensions`, and the Chrome version. Use the same extension build on both releases.
@@ -22,7 +33,7 @@ Use this checklist to test a specific Flow Keys build in ServiceNow Workflow Stu
 - [ ] **03 · Complete a keyboard-only edit.** From an empty flow, activate the extension, add a trigger, select its table, add an action, fill its required inputs, and choose Done. Complete the entire sequence using only the keyboard.
 - [ ] **04 · Find insertion points.** Use both ordinary ↑/↓ navigation and N. Insert before the first step, between steps, after the last step, and inside an empty If branch. Compare the highlighted row with the actual insertion location.
 - [ ] **05 · Configure a trigger.** At Add Trigger, press Enter and immediately type in the focused search box. Choose Record → Created, select Incident, and finish editing. Reopen the trigger and verify the table.
-- [ ] **06 · Switch step types.** Open Action search, press Esc, select Flow Logic and then Subflow with the arrow keys. From each picker, Esc returns to its type button. Backing out again selects the original insertion row.
+- [ ] **06 · Switch step types.** Press Enter at an insertion point and verify that all three types appear before any picker opens. Open Action with Enter, press Esc, then select Flow Logic and Subflow with the arrow keys. From each picker, Esc returns to its type button. Backing out again selects the original insertion row.
 - [ ] **07 · Confirm action search results.** Try a unique exact name, then a query with similar matches. Confirm the intended result with Enter and verify that exactly one instance of that action was added.
 - [ ] **08 · Search immediately after opening an action.** Try a new action and an existing collapsed action. Type as soon as its form opens and verify that the field finder receives the query. Close it and reopen it with F.
 - [ ] **09 · Distinguish fields and data pill controls.** In Ask For Approval, distinguish Approval Field from Journal Field despite the shared “Select a field” label. Search `journal select` for one Journal Field result. Verify that the pill icon beside Approval Reason opens that input’s data pill picker.

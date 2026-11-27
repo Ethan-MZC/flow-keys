@@ -35,7 +35,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
         dialog.onkeydown=e=>{if(e.key==='Escape') dialog.remove();};document.body.append(dialog);
       };
     });
-    const mac=Boolean(process.env.FK_MAC);if(mac) await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:'MacIntel'});const chord=(mac?'Meta':'Control')+'+Shift+k';const command=async k=>{await page.keyboard.press(chord);await page.keyboard.press(k);};await page.keyboard.press(chord);
+    const mac=Boolean(process.env.FK_MAC);await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:mac?'MacIntel':'Win32'});const chord=(mac?'Meta':'Control')+'+Shift+k';const command=async k=>{await page.keyboard.press(chord);await page.keyboard.press(k);};await page.keyboard.press(chord);
     const panel=page.locator('[data-flowkeys-panel]');
     let native=await panel.count();
     if(!native) {try {await panel.waitFor({timeout:1200});native=true;}catch{}}
@@ -103,7 +103,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       section.querySelector('a').onclick=e=>{
         e.preventDefault();
         setTimeout(()=>{
-          section.innerHTML='<div class="componentInstance"><div class="trigger-picker-component"><input id="action-picker-search-input"><button class="rm-btn-action">Created</button><button class="rm-btn-action">Created or Updated</button></div></div>';
+          section.innerHTML='<div class="componentInstance"><div id="picker2col_wrapper_select_trigger"><input id="action-picker-search-input"><button class="button-left" data-name="Created" data-index="1" aria-label="Category Record: Created">Created</button><button class="button-left" data-name="Created or Updated" data-index="2">Created or Updated</button></div></div>';
           const first=section.querySelector('button');
           setTimeout(()=>first.focus(),120);
           first.onclick=()=>{section.firstChild.innerHTML='<a id="flow_trigger_expand_form">Record Created</a><form class="inputFields"><input aria-label="Trigger table"></form>';};
@@ -118,15 +118,19 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await page.waitForFunction(()=>document.activeElement.id==='action-picker-search-input');
     await page.waitForTimeout(175);
     assert.equal(await page.evaluate(()=>document.activeElement.id),'action-picker-search-input');
+    await page.evaluate(()=>document.addEventListener('keyup',e=>{
+      if(e.key==='Enter' && document.querySelector('form.inputFields')) document.body.dataset.triggerSubmit='unexpected';
+    }));
     await page.keyboard.type('Created');await page.keyboard.press('ArrowDown');
     assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Created');
     await page.keyboard.press('Enter');await page.getByText('Record Created',{exact:true}).waitFor();
     await page.waitForFunction(()=>document.activeElement.getAttribute('aria-label')==='Trigger table');
+    assert.equal(await page.locator('body').getAttribute('data-trigger-submit'),null);
     await command('n');
     assert.equal(await page.getByText(ui(/Insertion point · Add Trigger/,/삽입 위치 · Add Trigger/)).count(),0);
     console.log('PASS empty Flow → Add Trigger → search focus after Studio autofocus → keyboard Record Created → trigger input');
     await page.goto(fixture);
-    if(mac) await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:'MacIntel'});
+    await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:mac?'MacIntel':'Win32'});
     await page.evaluate(()=>{
       document.body.innerHTML='<section id="app-floweditor"><div class="trigger-section"><div class="componentInstance form active"><a href="#" id="flow_trigger_expand_form">Record Created</a><form class="inputFields"><button type="button" id="picker2col_opener_select_trigger">Created</button><div id="s2id_flow_trigger_table_label" class="select2-container"><input aria-label="Table" role="combobox" class="select2-focusser"><a role="button" aria-hidden="true" class="select2-choice"><span class="select2-chosen">Select a Table</span><span class="select2-arrow">▼</span></a></div></form></div></div><div class="actionContainer"><div class="componentInstance" id="if-1"><a href="#" id="flow_action_1_expand_form">If</a><form class="inputFields" hidden><div class="condition-row"><input placeholder="Condition Label"><button type="button" class="dot_walk_btn">…</button><select><option>is</option></select></div></form></div></div></section>';
       document.querySelector('#flow_action_1_expand_form').onclick=e=>{e.preventDefault();document.querySelector('#if-1 form').hidden=false;};
@@ -134,6 +138,12 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
         const box=document.createElement('div');box.className=className;
         box.innerHTML='<input type="text" role="combobox"><ul role="listbox"><li role="option">Sample</li></ul>';
         document.body.append(box);box.querySelector('input').focus();
+        const chosen=opener.closest('.select2-container')?.querySelector('.select2-chosen');
+        if(chosen) {
+          const commit=()=>{chosen.textContent='Sample';box.remove();opener.focus();};
+          box.querySelector('[role=option]').onclick=commit;
+          box.addEventListener('keydown',e=>{if(e.key==='Enter') commit();});
+        }
         box.addEventListener('keydown',e=>{if(e.key==='Escape'){box.remove();opener.focus();}});
       }
       document.addEventListener('mousedown',e=>{
@@ -353,11 +363,24 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       const form=document.querySelector('[data-step-id=added] form');
       for(const [field,title] of [['approval_field','Approval Field'],['journal_field','Journal Field'],['approval_reason','Approval Reason']]) {
         const group=document.createElement('div');group.className='form-group dynamic-field_name';
+        if(field==='journal_field') group.style.marginTop='320px';
         group.innerHTML='<label class="control-label"></label><div class="field-element"><div class="select2-container"><input tabindex="-1" class="select2-focusser select2-offscreen"><a class="select2-choice"><span class="select2-chosen">Select a field</span></a></div></div><button type="button" class="dot_walk_btn"></button>';
         group.querySelector('label').textContent=title;group.querySelector('.field-element').id=field;
         const pill=group.querySelector('button');pill.setAttribute('aria-label','Data Pill Picker for '+title);
         pill.innerHTML='<svg><use href="/images/icon-data-pill-picker.svg#icon"></use></svg>';
-        pill.onclick=()=>{document.body.dataset.pill=field;};
+        pill.onclick=()=>{
+          document.body.dataset.pill=field;
+          if(field!=='approval_reason') return;
+          const picker=document.createElement('div');
+          picker.className='dot-walk-picker';
+          picker.innerHTML='<input aria-label="Search data pills"><button type="button">Record</button>';
+          form.append(picker);
+          picker.querySelector('button').onclick=()=>{
+            pill.dataset.value='Record';
+            picker.remove();
+            pill.focus();
+          };
+        };
         group.querySelector('a').addEventListener('mousedown',()=>document.body.dataset.field=field);
         if(field==='approval_reason') group.querySelector('.select2-container').remove();
         form.append(group);
@@ -369,18 +392,78 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await lookup.fill('Select a field');
     assert.deepEqual(await page.locator('#fk-results [role=option]').allTextContents(),
       ['Approval Field · Select a field','Journal Field · Select a field']);
+    const previewed=page.locator('.dynamic-field_name [data-flowkeys-focus]');
+    for(const [key,field] of [[null,'approval_field'],['ArrowDown','journal_field'],['ArrowUp','approval_field']]) {
+      if(key) await lookup.press(key);
+      assert.deepEqual(await previewed.evaluateAll(nodes=>nodes.map(n=>n.parentElement.id)),[field]);
+      assert(await previewed.evaluate(el=>{
+        const bounds=el.closest('#app-floweditor').getBoundingClientRect();
+        const label=el.closest('.form-group').querySelector('label').getBoundingClientRect();
+        return label.top>=bounds.top && el.getBoundingClientRect().bottom<=bounds.bottom+1 &&
+          getComputedStyle(el).outlineStyle==='solid';
+      }));
+      assert(await lookup.evaluate(el=>el.matches(':focus')));
+      assert.equal(await page.locator('.select2-drop:visible').count(),0);
+    }
+    await lookup.fill('missing preview target');
+    assert.equal(await previewed.count(),0);
+    await lookup.fill('journal select');
+    await lookup.press('Escape');
+    assert.equal(await previewed.count(),0);
+    await command('f');
     await lookup.fill('journal select');await lookup.press('Enter');
     await page.waitForFunction(()=>document.body.dataset.field==='journal_field' && document.activeElement.closest('.select2-drop'));
     await page.keyboard.press('Escape');
-    await command('f');await lookup.fill(ui('data pill','데이터 필'));
-    const pillOption=page.getByRole('option',{name:ui('Approval Reason · Data Pill Picker','Approval Reason · 데이터 필 선택기'),exact:true});
+    await lookup.waitFor();assert.equal(await lookup.inputValue(),'journal select');
+    for(const [id,query,byMouse] of [['journal_field','journal select',false],['approval_field','approval select',true]]) {
+      await lookup.fill(query);await lookup.press('Enter');
+      const search=page.locator('.select2-drop input');
+      await search.press('f');
+      assert.equal(await search.inputValue(),'f');
+      if(byMouse) await page.locator('.select2-drop [role=option]').click();
+      else await search.press('Enter');
+      await page.keyboard.press('f');
+      assert(await lookup.evaluate(el=>el.matches(':focus')));
+      assert.equal(await page.locator('#'+id+' .select2-chosen').textContent(),'Sample');
+    }
+    await lookup.fill(ui('data pill','데이터 필'));
+    const pillOption=page.getByRole('option',{name:'Approval Reason · Data Pill Picker',exact:true});
     assert.equal(await pillOption.innerText(),'Approval Reason');
     const original=await page.locator('button[aria-label="Data Pill Picker for Approval Reason"] use').getAttribute('href');
     assert.equal(new URL(await pillOption.locator('use').getAttribute('href'),fixture).href,new URL(original,fixture).href);
     await page.waitForFunction(()=>document.querySelector('[data-flowkeys-panel]').shadowRoot.querySelector('[role=option] svg use')?.getBBox().width>0);
     await lookup.fill('approval reason data pill');await lookup.press('Enter');
     await page.waitForFunction(()=>document.body.dataset.pill==='approval_reason');
-    assert.equal(await panel.locator('output svg[aria-label="'+ui('Data Pill Picker','데이터 필 선택기')+'"]').count(),1);
+    assert.equal(await panel.locator('output svg[aria-label="Data Pill Picker"]').count(),1);
+    const pillSearch=page.getByRole('textbox',{name:'Search data pills'});
+    await pillSearch.press('f');
+    assert.equal(await pillSearch.inputValue(),'f');
+    await page.locator('.dot-walk-picker button').press('Enter');
+    const pillButton=page.getByRole('button',{name:'Data Pill Picker for Approval Reason',exact:true});
+    assert(await pillButton.evaluate(el=>el===document.activeElement && el.dataset.value==='Record'));
+    await page.keyboard.press('f');
+    assert(await lookup.evaluate(el=>el===el.getRootNode().activeElement));
+    await page.keyboard.type('journal');
+    assert.equal(await lookup.inputValue(),'journal');
+    assert.equal(await pillButton.getAttribute('data-value'),'Record');
+    await lookup.press('Escape');
+    console.log('PASS F searches inside the open data pill picker, then opens field search immediately after committing the pill');
+    await page.locator('[data-step-id=added] form').evaluate(form=>form.insertAdjacentHTML('beforeend',
+      '<label>Due Date<select id="test-due"><option>None</option><option>Approve</option></select></label><label>Enabled<input id="test-enabled" type="checkbox"></label>'));
+    const due=page.locator('#test-due'), checkbox=page.locator('#test-enabled');
+    await due.focus();await due.selectOption({label:'Approve'});await page.keyboard.press('f');
+    assert(await lookup.evaluate(el=>el.matches(':focus')));
+    assert.equal(await due.inputValue(),'Approve');
+    await lookup.press('Escape');await checkbox.press('Space');await page.keyboard.press('f');
+    assert(await lookup.evaluate(el=>el.matches(':focus')));
+    assert(await checkbox.isChecked());
+    await lookup.press('Escape');
+    const textField=page.locator('#new-input');
+    await textField.fill('');await textField.press('f');await textField.press('F2');
+    assert(await lookup.evaluate(el=>el.matches(':focus')));
+    assert.equal(await textField.inputValue(),'f');
+    await lookup.press('Escape');
+    console.log('PASS immediate field search from Select2, native select and checkbox, plus F2 while typing');
     console.log('PASS delayed Action, label and field visible inside nested scrolling canvas, Tab to offscreen input, contextual Select2 search and named data pill activation');
     await page.evaluate(()=>{
       const opener=document.querySelector('#picker2col_opener_select_trigger');
@@ -452,9 +535,11 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     if(process.env.FK_ROW_PREVIEW) await activeRow.screenshot({path:process.env.FK_ROW_PREVIEW});
     assert.equal(await toggle.getAttribute('aria-label'),'Close picker to add action, flow logic, or subflow');
     await activeRow.evaluate(n=>n.style.width='200px');
-    await page.waitForFunction(()=>document.querySelector('[data-flowkeys-insertion-row]').nextElementSibling?.matches('[data-flowkeys-row-caption]'));
-    const rowRect=await activeRow.boundingBox();
-    assert((await caption.boundingBox()).y>=rowRect.y+rowRect.height-1);
+    await page.waitForFunction(()=>{
+      const row=document.querySelector('[data-flowkeys-insertion-row]'), caption=row?.nextElementSibling;
+      return caption?.matches('[data-flowkeys-row-caption]') &&
+        caption.getBoundingClientRect().top>=row.getBoundingClientRect().bottom-1;
+    });
     await page.keyboard.press('Escape');
     assert.equal(await caption.count(),0);assert.equal(await activeRow.count(),0);
     console.log('PASS spoke and result type-to-search, slash replacement, Backspace, Korean composition, Subflow and field picker search, wide and narrow insertion rows');
@@ -468,7 +553,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       drop.querySelector('a').onclick=e=>{
         e.preventDefault();
         const row=document.createElement('div');row.className='instance-type-new';
-        row.innerHTML='<button id="flow_action_newAction">Action</button><button id="flow_action_btnToggleAction" aria-label="Close picker to add action">×</button>';
+        row.innerHTML='<button id="flow_action_newAction">Action</button><button id="flow_action_newFlowLogic">Flow Logic</button><button id="flow_action_newSubflow">Subflow</button><button id="flow_action_btnToggleAction" aria-label="Close picker to add action">×</button>';
         row.lastChild.onclick=()=>{
           row.remove();
           const plus=drop.querySelector('a'),replacement=plus.cloneNode(true);
@@ -516,6 +601,12 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await page.keyboard.press('Escape');
     assert(await between.locator('article a').evaluate(el=>document.activeElement===el));
     await page.keyboard.press('n');await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.activeElement.matches('#between-test #flow_action_newAction'));
+    for(const type of ['Action','Flow Logic','Subflow']) assert(await between.getByRole('button',{name:type,exact:true}).isVisible());
+    await page.keyboard.press('ArrowRight');assert(await between.locator('#flow_action_newFlowLogic').evaluate(el=>el===document.activeElement));
+    await page.keyboard.press('ArrowRight');assert(await between.locator('#flow_action_newSubflow').evaluate(el=>el===document.activeElement));
+    assert.equal(await between.locator('#action-picker-search-input').count(),0);
+    await page.keyboard.press('ArrowRight');await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.activeElement.matches('#between-test #action-picker-search-input'));
     await page.keyboard.type('nf');assert.equal(await between.locator('#action-picker-search-input').inputValue(),'nf');
     await between.locator('#action-picker-search-input').evaluate(el=>el.onkeydown=e=>{if(e.key==='Escape') el.closest('.instance-type-new').remove();});
@@ -548,7 +639,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
               const overlay=document.createElement('div');
               overlay.innerHTML='<div class="instanceDeleteModal" role="dialog" tabindex="-1"><button id="instanceDeleteModal_cancelButton">Cancel</button><button id="instanceDeleteModal_confirmButton">Delete</button></div>';
               const [cancel,confirm]=overlay.querySelectorAll('button');
-              cancel.onclick=()=>{overlay.remove();card.focus();};
+              cancel.onclick=()=>{overlay.remove();b.focus();};
               confirm.onclick=()=>{overlay.remove();card.remove();};
               document.body.append(overlay);overlay.firstChild.focus();
             },45);
@@ -572,20 +663,23 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     const msg=subject.locator('textarea');
     await lookup.fill('message');await lookup.press('Enter');await msg.pressSequentially('daxcenf');
     assert.equal(await msg.inputValue(),'daxcenf');
+    await msg.press('Escape');assert.equal(await lookup.inputValue(),'message');
+    await lookup.press('Escape');assert(await subject.evaluate(n=>n===document.activeElement));
     await command('d');await command('a');
     await page.waitForFunction(()=>document.activeElement.getAttribute('aria-label')==='Action annotation text field');
-    await command('c');await command('e');
+    await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement.dataset.stepId==='8');await page.keyboard.press('c');
+    await msg.focus();await page.keyboard.press((mac?'Meta':'Control')+'+Enter');
     assert.deepEqual(await page.evaluate(()=>JSON.parse(document.body.dataset.operations)),['8/duplicate','8/annotation','8/cancel','8/done']);
-    await command('x');
-    await page.waitForFunction(()=>document.activeElement.id==='instanceDeleteModal_confirmButton');
+    await subject.focus();await page.keyboard.press('x');
+    await page.waitForFunction(()=>document.activeElement.id==='instanceDeleteModal_cancelButton');
     await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement.dataset.stepId==='8');
     await subject.locator('#flow_action_btnDone').evaluate(n=>n.disabled=true);
     await page.keyboard.press(chord);assert(!(await panel.locator('[data-command=done]').isVisible()));
     await page.keyboard.press('e');assert.equal(await page.evaluate(()=>JSON.parse(document.body.dataset.operations).length),5);
-    await command('x');await page.waitForFunction(()=>document.activeElement.id==='instanceDeleteModal_confirmButton');
+    await command('x');await page.waitForFunction(()=>document.activeElement.id==='instanceDeleteModal_cancelButton');
     await page.keyboard.press('ArrowLeft');assert.equal(await page.evaluate(()=>document.activeElement.id),'instanceDeleteModal_cancelButton');
     await page.keyboard.press('Enter');assert.equal(await subject.count(),1);
-    await command('x');await page.waitForFunction(()=>document.activeElement.id==='instanceDeleteModal_confirmButton');
+    await command('x');await page.waitForFunction(()=>document.activeElement.id==='instanceDeleteModal_cancelButton');
     await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowRight');await page.keyboard.press('Enter');
     await subject.waitFor({state:'detached'});assert.equal(await page.locator('[data-step-id="7"]').count(),1);
     const other=page.locator('[data-step-id="7"]');
@@ -610,7 +704,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     console.log('PASS native delete confirmation, Escape and arrow keys, scoped confirmation, delayed Action property caret, immediate typing and deliberate navigation');
     console.log('PASS automatic Action field finder, direct text edit, scoped duplicate/annotation/cancel/done/delete, disabled command and delete cancellation');
     await page.goto(fixture);
-    if(mac) await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:'MacIntel'});
+    await (await ctx.newCDPSession(page)).send('Emulation.setUserAgentOverride',{userAgent:await page.evaluate(()=>navigator.userAgent),platform:mac?'MacIntel':'Win32'});
     await page.evaluate(()=>{
       const makeRow=(group,index)=>{
         const row=document.createElement('div');row.className='condition-row';
@@ -637,7 +731,11 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await dev.send('Extensions.triggerAction',{id,targetId:tabInfo.targetId});
     await page.getByRole('link',{name:'Else If'}).press('Enter');
     const logicQuery=page.getByRole('combobox',{name:ui('Find conditions and buttons','조건 및 버튼 검색')}), rowCount=id=>page.locator('[data-step-id="'+id+'"] .condition-row').count();
-    await logicQuery.waitFor();await logicQuery.fill('AND');await logicQuery.press('Enter');
+    await logicQuery.waitFor();
+    for(const name of ['Condition Label','Group 1 · Condition 1 · Delete condition','OR · Add a new condition group']) {
+      assert.equal(await panel.getByRole('option',{name,exact:true}).count(),1);
+    }
+    await logicQuery.fill('AND');await logicQuery.press('Enter');
     assert.equal(await rowCount('logic1'),2);assert.equal(await rowCount('logic0'),1);
     await logicQuery.fill(ui('group1 condition2 OR','그룹1 조건2 OR'));assert.equal(await panel.getByRole('option').count(),1);await logicQuery.press('Enter');
     assert.equal(await rowCount('logic1'),3);
@@ -819,7 +917,7 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
       await personQuery.fill(q);await panel.getByText(msg,{exact:true}).waitFor();
     }
     await personQuery.press('Escape');
-    await page.waitForFunction(()=>document.activeElement.id==='fixture-person');
+    await lookup.waitFor();assert.equal(await lookup.inputValue(),ui('assigned_to value','assigned_to 값'));
     assert.equal(await dynamic.locator('#s2id_field_values_assigned_to_3 .select2-chosen').innerText(),'Original');
     await openPerson();await personQuery.fill('Alex');
     await page.getByRole('option',{name:'Alex Kim · alex.1'}).waitFor();
@@ -828,6 +926,49 @@ const html='<!doctype html><meta charset=utf-8><h1>Flow editor fixture</h1><test
     await page.waitForFunction(()=>document.activeElement.id==='fixture-person');
     assert.equal(await dynamic.locator('.colrow[data-selected]').getAttribute('data-selected'),people[1]);
     console.log('PASS duplicate assignee identity, reference statuses, exact Enter commit, Escape and focus after replacement');
+    await page.goto(fixture);
+    await page.evaluate(()=>{
+      document.body.innerHTML='<main id="app-floweditor"><div class="instance-component-stage-container"><div class="stage-container"></div><article data-step-id="stage-action"><a id="flow_action_0_expand_form">Approval</a></article></div></main>';
+      const area=document.querySelector('.stage-container');
+      let label='Add a Stage',version=0;
+      function close() {
+        area.innerHTML='<button id="addStageBtn-'+(++version)+'"></button>';
+        const button=area.firstChild;button.textContent=label;
+        button.onclick=()=>{
+          area.innerHTML='<button id="btn_StagesCreateNewPopover_qa" aria-expanded="false">New Stage</button>';
+          const create=area.firstChild;
+          create.onclick=()=>{
+            const open=area.querySelector('.stages-create-new-popover');
+            create.setAttribute('aria-expanded',String(!open));
+            if(open) {open.remove();return;}
+            const form=document.createElement('div');form.className='stages-create-new-popover';
+            form.innerHTML='<input aria-label="Stage Name"><button type="button">Done</button>';area.append(form);
+            form.firstChild.focus();form.lastChild.onclick=()=>{label=form.firstChild.value;close();};
+          };
+        };
+      }
+      close();
+      document.querySelector('main').addEventListener('mousedown',e=>{
+        if(e.target===e.currentTarget && area.querySelector('[aria-expanded]')) close();
+      });
+    });
+    await dev.send('Extensions.triggerAction',{id,targetId:tabInfo.targetId});
+    await marked.waitFor();
+    await page.keyboard.press('ArrowUp');
+    const stageSlot=page.locator('button[id^=addStageBtn-]');
+    assert(await stageSlot.evaluate(el=>el===document.activeElement));
+    await page.keyboard.press('Enter');
+    const newStage=page.getByRole('button',{name:'New Stage'});
+    await page.waitForFunction(()=>document.activeElement.textContent==='New Stage');
+    await newStage.press('Enter');await page.getByRole('textbox',{name:'Stage Name'}).press('Escape');
+    await page.waitForFunction(()=>document.activeElement.textContent==='New Stage');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>document.activeElement.id.startsWith('addStageBtn-'));
+    await page.keyboard.press('Enter');await newStage.press('Enter');
+    await page.getByRole('textbox',{name:'Stage Name'}).fill('QA Review');await page.getByRole('button',{name:'Done',exact:true}).click();
+    await page.waitForFunction(()=>document.activeElement.textContent==='QA Review');
+    await page.keyboard.press('ArrowDown');assert.equal(await marked.getAttribute('data-step-id'),'stage-action');
+    console.log('PASS Stage navigation, nested Escape, Done, replacement slot and next action');
     assert.deepEqual(errors,[]);
     console.log('PASS field/value search, direct value focus, forwarding new field query, duplicate insertion deduplication, category keyboard selection and exact action insertion');
     console.log('PASS navigation, portal search, option selection, field focus return, branch cancel, nested insertion, new card focus, native Escape, teardown');
