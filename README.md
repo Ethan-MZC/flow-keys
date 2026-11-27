@@ -2,6 +2,8 @@
 
 Edit ServiceNow flows from your keyboard. Flow Keys highlights the active step, keeps it in view, and lets you search actions, fields, and data pills in Workflow Studio.
 
+[Release notes](RELEASE_NOTES.md)
+
 ## Tested environments
 
 Flow Keys targets the editable Workflow Studio flow canvas on HTTPS `*.service-now.com` instances in Chrome 125 or later. The checks below cover the list of steps in an editable draft. Diagram view, read-only flows, and individual third-party spokes need separate verification.
@@ -23,6 +25,14 @@ Use the [release QA checklist](QA.md) to repeat these checks and record editing,
 
 To update, pull the latest changes, reload the extension, and refresh the editor tab.
 
+## Edit several fields in one action
+
+1. With Flow Keys active, focus **Ask For Approval** and press **F**. Type `approval field` and use ↑ or ↓ to highlight the selector. The matching control is outlined on the canvas. Press **Enter** to open it.
+2. Choose a value, then press **F** and type `journal field`. Your typing replaces the previous query. Choose the Journal Field selector and press **Enter**. The same **F** shortcut works after choosing a data pill for **Record**.
+3. When typing in **Approval Reason**, press **F2** to find another field. To finish the action from the text field, press **⌘+Enter** on macOS or **Ctrl+Enter** on Windows.
+
+To revisit the list you came from, press **Esc**. Flow Keys restores the query and highlights the previous result. In an **If** step, you can search by position as well as name. For example, `group 1 condition 2 OR` finds the OR control on that row.
+
 ## Keyboard guide
 
 | When | Keys | What happens |
@@ -39,8 +49,6 @@ To update, pull the latest changes, reload the extension, and refresh the editor
 | On a card or its header | E / C / X | Done, Cancel, or open the step’s deletion dialog with Cancel focused. |
 | Inside a step form | ⌘+Enter / Ctrl+Enter | Invoke the current step’s available Done button on macOS / Windows. |
 | In the command menu | D / A / E / C / X | Duplicate, annotate, finish, cancel, or open the selected step’s deletion dialog. |
-
-**Try it:** Open **Ask For Approval**, press **F**, and type `journal select` to reach the Journal Field selector. In an **If** step, search `group 1 condition 2 OR` to add a condition to that specific row.
 
 ## Language and access
 
