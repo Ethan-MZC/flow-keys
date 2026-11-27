@@ -2,6 +2,17 @@
 
 Edit ServiceNow flows from your keyboard. Flow Keys highlights the active step, keeps it in view, and lets you search actions, fields, and data pills in Workflow Studio.
 
+## Tested environments
+
+Flow Keys targets the editable Workflow Studio flow canvas on HTTPS `*.service-now.com` instances in Chrome 125 or later. The checks below cover the list of steps in an editable draft. Diagram view, read-only flows, and individual third-party spokes need separate verification.
+
+| ServiceNow release | Environment | Editing checks |
+| --- | --- | --- |
+| Brazil Patch 2 | Original development PDI | Record Created triggers, If conditions, action field search, data pills, and keyboard navigation between insertion points and step types. |
+| Australia Patch 6 (build tag `patch6w39`) | Separate demo instance, Windows Chrome, Nov 27, 2026 | Opened trigger and action search from the insertion row. Selected Record → Created and set the table to Incident. In Ask For Approval, `F` then `journal select` returned only the Journal Field selector. Enter opened it and Esc restored focus. Both the trigger and action remained after reloading the inactive draft. |
+
+During the Australia check, Studio briefly reopened the draft read-only. Reloading and choosing **Edit flow** restored editing. Activation and runtime execution were outside this check.
+
 ## Get started
 
 1. Clone this repository or extract **Code → Download ZIP**.
