@@ -1,5 +1,6 @@
 (() => {
-  if (globalThis.flowKeysController) return globalThis.flowKeysController.probe();
+  // Keep a running session, but install the current script when reactivating a draft.
+  if (globalThis.flowKeysController?.probe().active) return {active:true};
 
   const msg = (key, ...values) => chrome.i18n.getMessage(key, values.map(String));
   const controls = 'button,select,[role="button"],[role="combobox"],[aria-haspopup],input,[tabindex],a[href],[ng-click],[data-ng-click]';
@@ -15,6 +16,7 @@
     {id:'cancel',key:'C',label:msg('cancel'),selector:'#flow_action_btnCancel,#flow_trigger_btnCancel,#flow_trigger_btn_cancel'},
     {id:'delete',key:'X',label:msg('delete'),selector:'#flow_action_btnDelete,#flow_trigger_btnDelete,#flow_trigger_btn_delete,[id*="_delete_icon_"]'}
   ];
+  const doneCommand=stepCommands.find(command=>command.id==='done');
   const fieldButtons = '.dot_walk_btn,[id^="picker2col_opener_"],.select2-container,select,[role="combobox"]';
   const templateGroup = '.template_picker,[id$="_template_fields"]';
   const addFieldButton = '.btn-add-fv,.template_picker button[aria-label*="add a new row and pick a field" i]';
@@ -22,10 +24,14 @@
   const groupSelector = '.form-group,.colrow,[data-condition-row],fieldset,[role="group"]';
   const categoryButtons = '#flow_action_newAction,#flow_action_newFlowLogic,#flow_action_newSubflow';
   // The text link is the keyboard opener. Studio removes it when a trigger exists.
+  const stageButton = 'button[id^="addStageBtn-"]';
+  const stageCreate = 'button[id^="btn_StagesCreateNewPopover_"]';
+  const stageForm = '.stages-create-new-popover';
   const addTrigger = '#flow_trigger_text_toggle';
   const hoverInsertion = '.drop-target-wrapper .addInstanceBtn [role="button"][data-isdroppable="true"][aria-label]';
   const logicList = '.flowlogic-picker-list';
   const searchableMenu = '.action-picker-component,.subflow-picker-component,#picker2col_choices_select_subflow,.trigger-picker-component,.dot-walk-picker,.select2-drop';
+  const triggerResults='button.rm-btn-action,button.rm-btn-trigger,button.button-left[data-index][data-name]';
   const stepSearch = '#action-picker-search-input,#picker2col_search_select_subflow,.subflow-picker-component input';
   const textSearch = 'input:not([type]),input[type=text],input[type=search]';
   const fields = /(?:\b(?:select|choose|pick|add) (?:a |an )?(?:field|data pill)|\bfield(?: picker)?\b|pill picker|data pill picker|dot.walk|필드|데이터\s*필)/i;
@@ -48,6 +54,8 @@
   const sheet = `
     .select2-result-label[data-flowkeys-identity]::after{content:" · " attr(data-flowkeys-identity);font-size:.9em}
     [data-flowkeys-card]:not([data-flowkeys-preview-origin]){background-color:light-dark(#f0f0f0,#353535)!important;box-shadow:inset 4px 0 #414aff!important}
+    [data-flowkeys-focus][id^="addStageBtn-"]{opacity:1!important}
+    .stage-container:has([data-flowkeys-focus]){opacity:1!important}
     [data-flowkeys-focus]{outline:3px solid light-dark(#414aff,#00d7f8)!important;outline-offset:1px!important}
     .picker-filter input[id="action-picker-search-input"]:focus,
     .action-picker-component input[id="action-picker-search-input"]:focus{
@@ -90,6 +98,7 @@
   function shown(el) {
     if(!el.isConnected || !el.getClientRects().length || ancestor(el,n=>n.matches('[hidden],[inert],[aria-hidden="true"]'))) return false;
     if(el.checkVisibility({visibilityProperty:true,opacityProperty:true})) return true;
+    if(el.matches(stageButton)) return el.checkVisibility({visibilityProperty:true});
     // Studio makes the between-step + transparent until hover or keyboard focus.
     return el.matches(hoverInsertion) && el.checkVisibility({visibilityProperty:true}) &&
       el.parentElement.checkVisibility({visibilityProperty:true,opacityProperty:true});
@@ -182,7 +191,7 @@
       const shortcut=document.createElement('kbd');shortcut.textContent=key;
       b.append(shortcut,label);commands.append(b);
     }
-    let commandCard=null;
+    let commandCard=null, commandOrigin=null, closingForm=null;
     let deletion=null, annotationCard=null, annotationTimer=0;
     get('help').before(commands);
     function pillIcon(button) {
@@ -224,8 +233,15 @@
     const query=finder.querySelector('input');
     const results=get('fk-results');
     let catalog=[], matches=[], cursor=0, origin=null, fieldCard=null;
+    const finderHistory=[];
+    const lastFieldSearch=new WeakMap();
     const normalize=s=>s.normalize('NFKC').toLocaleLowerCase().replace(/[_\s]+/g,' ').trim();
     function hideFinder() {
+      if(!finder.hidden) {
+        if(fieldCard) lastFieldSearch.set(fieldCard,{value:query.value,selected:matches[cursor],scroll:results.scrollTop});
+        mark('field',null);
+        releaseViewport();
+      }
       finder.hidden=true;fieldCard=null;catalog=[];matches=[];query.value='';results.replaceChildren();
       query.removeAttribute('aria-activedescendant');
     }
@@ -236,8 +252,17 @@
         query.setAttribute('aria-activedescendant',selected.id);
         scrollWithin(results,selected);
       } else query.removeAttribute('aria-activedescendant');
+      // Mirror the active result on the canvas while the combobox keeps keyboard focus.
+      const target=matches[cursor]?.el;
+      if(target && enabled(target) && cardOf(target)===state.card) {
+        mark('field',target);
+        reveal(target);
+      } else {
+        mark('field',null);
+        releaseViewport();
+      }
     }
-    function filterResults() {
+    function filterResults(previous=null) {
       const needle=normalize(query.value);
       const logic=fieldCard?.matches(logicCard);
       const locationPattern=/(group|condition|그룹|조건)\s*(\d+)/g;
@@ -271,22 +296,32 @@
         }
         fragment.append(row);
       }
-      cursor=0;results.replaceChildren(fragment);highlightResult();
+      cursor=previous ? Math.max(0,matches.findIndex(v=>v.el===previous.el && v.key===previous.key)) : 0;
+      results.replaceChildren(fragment);highlightResult();
       say(matches.length ? msg('resultsFound',matches.length) : msg('noMatches'));
     }
-    function showFinder(entries,returnTo=deepActive(),owner=null,prompt='') {
+    function showFinder(entries,returnTo=deepActive(),owner=null,prompt='',frame=null) {
       commands.hidden=true;fieldCard=owner;
       const logic=owner?.matches(logicCard);
       query.setAttribute('aria-label',prompt || (logic?msg('findConditions'):msg('findFields')));
       query.placeholder=prompt || (logic?msg('findConditionsHint'):msg('findFieldsHint'));
-      origin=returnTo;catalog=entries;finder.hidden=false;query.value='';
-      filterResults();query.focus({preventScroll:true});
+      origin=returnTo;catalog=entries;finder.hidden=false;query.value=frame?.value || '';
+      filterResults(frame?.selected);if(frame) {results.scrollTop=frame.scroll;scrollWithin(results,results.children[cursor] || results);}query.focus({preventScroll:true});
+    }
+    function backToFinder() {
+      const frame=finderHistory.pop();
+      if(!frame || !state.card?.isConnected || frame.card!==state.card) {finderHistory.length=0;return false;}
+      const entries=frame.owner ? editorEntries(frame.owner) : frame.entries.filter(v=>enabled(v.el));
+      showFinder(entries,frame.origin,frame.owner,frame.prompt,frame);
+      return true;
     }
     function chooseResult(i) {
       const entry=matches[i];
       if(!entry || !enabled(entry.el) || cardOf(entry.el)!==state.card) {
         say(msg('editorChanged'));hideFinder();focus(state.card);return;
       }
+      if(!entry.press) finderHistory.push({card:state.card,owner:fieldCard,entries:catalog,origin,
+        prompt:query.getAttribute('aria-label'),value:query.value,selected:entry,scroll:results.scrollTop});
       hideFinder();
       if(entry.addRow) {
         const card=state.card;
@@ -349,12 +384,20 @@
       if(!entries.length) return false;
       reveal(el);showFinder(entries,el,null,msg('findValues'));return true;
     }
-    on(query,'input',filterResults);
+    on(query,'input',()=>filterResults());
     on(query,'keydown',e=>{
       if(e.isComposing || e.keyCode===229) return;
       if(!['ArrowUp','ArrowDown','Enter','Escape','Tab'].includes(e.key)) return;
       e.preventDefault();e.stopPropagation();
-      if(e.key==='Escape' || e.key==='Tab') {hideFinder();focus(origin?.isConnected && origin!==host ? origin : state.card);return;}
+      if(e.key==='Escape' || e.key==='Tab') {
+        if(e.repeat) return;
+        hideFinder();
+        if(e.key==='Escape' && backToFinder()) return;
+        finderHistory.length=0;
+        focus(e.key==='Escape' && state.card ? state.card : origin?.isConnected && origin!==host ? origin : state.card);
+        if(state.card) say(stepTitle(state.card));
+        return;
+      }
       if(e.key==='Enter') {if(matches.length && !e.repeat) chooseResult(cursor);return;}
       cursor=Math.max(0,Math.min(matches.length-1,cursor+(e.key==='ArrowDown'?1:-1)));highlightResult();
     });
@@ -382,6 +425,15 @@
         followFieldRow();
         followNewForm();
         syncDeleteModal();
+        if(closingForm) {
+          const {card,button,until}=closingForm;
+          if(!button.isConnected || !shown(button)) {
+            closingForm=null;
+            if(card.isConnected && (deepActive()===document.body || card.contains(deepActive()))) {
+              select(card);focus(card);say(stepTitle(card));
+            }
+          } else if(performance.now()>until) closingForm=null;
+        }
         if(annotationCard) focusAnnotation(annotationCard);
         if(fieldCard) {
           if(!fieldCard.isConnected || fieldCard!==state.card) hideFinder();
@@ -389,11 +441,11 @@
             const updated=editorEntries(fieldCard);
             if(updated.length!==catalog.length || updated.some((v,i)=>v.el!==catalog[i].el || v.option!==catalog[i].option || v.key!==catalog[i].key)) {
               const current=matches[cursor];
-              catalog=updated;filterResults();cursor=Math.max(0,matches.findIndex(v=>v.el===current?.el && v.key===current.key));highlightResult();
+              catalog=updated;filterResults(current);
             }
           }
         }
-        draw();scheduleReveal();
+        syncStage();draw();scheduleReveal();
       },75);
     }
     function index() {
@@ -461,7 +513,7 @@
       styleRoot(el);
       el.setAttribute(marks[kind],'');
     }
-    function select(el) {mark('card',el);state.cardKey=el && cardKey(el);mark('field',null);}
+    function select(el) {if(el!==state.card) finderHistory.length=0;mark('card',el);state.cardKey=el && cardKey(el);mark('field',null);}
     function focus(el,context=null) {
       if (!el || !shown(el)) return;
       if (el.tabIndex<0 && !el.hasAttribute('tabindex')) {
@@ -664,12 +716,17 @@
     }
     function syncDeleteModal() {
       if(!deletion) return;
-      const {card,title,dialog}=deletion;
+      const {card,title,dialog,neighbor}=deletion;
       if(dialog) {
         if(shown(dialog)) return;
         deletion=null;
         const current=cardOf(deepActive());
-        if(current) select(current);
+        if(!card.isConnected && neighbor?.isConnected && (!current || deepActive()===document.body)) {
+          select(neighbor);focus(neighbor);
+        } else if(current) {
+          select(current);
+          if(current===card || cardKey(current) && cardKey(current)===cardKey(card)) focus(current);
+        }
         else if(card.isConnected && shown(card) && deepActive()===document.body) {select(card);focus(card);}
         say(card.isConnected?msg('deleteClosed'):title+' · '+msg('removed'));
         return;
@@ -678,12 +735,14 @@
       if(!modal) return;
       clearTimeout(deletion.timer);Object.assign(deletion,modal);
       const active=deepActive();
-      if(active!==modal.cancel && active!==modal.confirm) focus(enabled(modal.confirm)?modal.confirm:modal.cancel);
+      if(active!==modal.cancel && enabled(modal.cancel)) focus(modal.cancel);
       say(title+' · '+msg('deleteKeys'));
     }
     function awaitDeleteModal(card) {
       if(deletion) clearTimeout(deletion.timer);
-      const pendingDelete={card,title:stepTitle(card)};
+      const cards=index().cards.filter(el=>el!==card && !card.contains(el)).sort(canvasOrder);
+      const neighbor=cards.find(el=>canvasOrder(card,el)<0) || cards.at(-1);
+      const pendingDelete={card,title:stepTitle(card),neighbor};
       deletion=pendingDelete;
       pendingDelete.timer=setTimeout(()=>{
         if(deletion===pendingDelete && !deletion.dialog) {
@@ -691,8 +750,7 @@
         }
       },3500);
     }
-    function runStep(spec) {
-      const card=commandCard;
+    function runStep(spec,card=commandCard) {
       const button=card===state.card && stepButton(card,spec);
       if(!button) {say(msg('commandUnavailable',spec.label));return;}
       const title=stepTitle(card) || msg('currentStep');
@@ -704,6 +762,7 @@
       }
       if(spec.id==='annotation') {openAnnotation(card,button);return;}
       if(spec.id==='duplicate') expectForm();
+      if(spec.id==='done' || spec.id==='cancel') {finderHistory.length=0;closingForm={card,button,until:performance.now()+1500};}
       say(title+' · '+spec.label);button.click();
       if((spec.id==='done' || spec.id==='cancel') && card.isConnected &&
           (!button.isConnected || !shown(button)) && deepActive()===document.body) focus(card);
@@ -743,7 +802,7 @@
       function add(el,label,detail,value='',edit=false,description=null) {
         if(!el || entries.has(el) || !enabled(el) || cardOf(el)!==card) return;
         const title=description?.title || [label,detail,value.slice(0,55)].filter(Boolean).join(' · ');
-        const aliases=description?.pill?'Data Pill Picker 데이터 필 선택기':'';
+        const aliases=description?.pill?'Data Pill Picker 데이터 필 선택기':description?.alias;
         entries.set(el,{...description,el,title,edit,label:normalize(label),key:normalize([title,aliases,description?.section,description?.internalName,value,el.id].join(' '))});
       }
       for(const button of card.querySelectorAll(addFieldButton)) {
@@ -768,10 +827,10 @@
             const picker=value.matches('.select2-container,select,[role=combobox]');
             const current=value.matches('.select2-container')?fieldLabel(value):
               value.matches('select')?value.selectedOptions[0]?.text : value.value ?? value.textContent;
-            add(value,label,msg('value'),String(current || '').trim(),!picker,{...context,valueInput:picker});
+            add(value,label,'Value',String(current || '').trim(),!picker,{...context,valueInput:picker,alias:msg('value')});
           }
         }
-        add(field,label,msg('pickField'),'',false,{...context,blank:!!field.querySelector('.select2-choice.select2-default')});
+        add(field,label,'Select field','',false,{...context,alias:msg('pickField'),blank:!!field.querySelector('.select2-choice.select2-default')});
         const pill=valueBox?.querySelector('.dot_walk_btn');
         if(pill) add(pill,label,'','',false,{...context,...fieldDescription(pill,label)});
       }
@@ -845,8 +904,8 @@
           for(const option of el.options) {
             if(option.matches(':disabled') || option.hidden || option.closest('optgroup[hidden]')) continue;
             const label=option.label.trim();
-            const title=location+' · '+msg('operator')+' · '+label;
-            entries.push({el,option,location,title,label:normalize(label),key:normalize(title+' operator '+option.value)});
+            const title=location+' · Operator · '+label;
+            entries.push({el,option,location,title,label:normalize(label),key:normalize([title,msg('operator'),option.value].join(' '))});
           }
           continue;
         }
@@ -857,18 +916,19 @@
         const and=el.matches('.and-btn'), or=el.matches('.or-btn');
         const group=el.matches('[id$="btnAddConditionsSet"]') || /add another condition set/i.test(native);
         const remove=/remove condition/i.test(native);
+        let alias='';
         if(and || or) label=and?'AND':'OR';
-        else if(group) label=msg('newGroup');
-        else if(remove) label=msg('removeCondition');
-        else if(pill && row) label=/for condition set/i.test(native)?msg('conditionField'):msg('conditionValue');
-        else if(el.id==='condition_name') label=msg('conditionLabel');
-        else if(valueInput) label=msg('enterConditionValue');
+        else if(group) {label='OR · Add a new condition group';alias=msg('newGroup');}
+        else if(remove) {label='Delete condition';alias=msg('removeCondition');}
+        else if(pill && row && /for condition set/i.test(native)) {label='Condition field';alias=msg('conditionField');}
+        else if(el.id==='condition_name') {label='Condition Label';alias=msg('conditionLabel');}
+        else if((pill && row) || valueInput) {label='Condition value';alias=msg('enterConditionValue')+' '+msg('conditionValue');}
         else if(press) label=text || native || label;
         if(!label) continue;
         const title=[location,label].filter(Boolean).join(' · ');
         const accessible=pill?title+' · '+msg('pillPicker'):title;
         entries.push({el,title,pill,accessible,location,valueInput,join:and?'and':or || group?'or':'',label:normalize(label),
-          key:normalize([accessible,native,el.id,group?'group set':'',remove?'remove delete':''].join(' ')),
+          key:normalize([accessible,alias,pill?'데이터 필 선택기':'',native,el.id,group?'group set':'',remove?'remove delete':''].join(' ')),
           edit:edit && !press && !select && !pill,press:press && !select && !pill,structure:and || or || group,remove});
       }
       return entries;
@@ -878,18 +938,20 @@
         const entries=actionFields(card);
         const toggle=card.querySelector('#adv_trigger_toggle_button');
         if(toggle && enabled(toggle)) {
-          const title='Advanced Options · '+(toggle.getAttribute('aria-expanded')==='true'?msg('collapse'):msg('expand'));
-          entries.push({el:toggle,title,label:'advanced options',key:normalize(title+' 고급 옵션'),press:true,structure:true});
+          const expanded=toggle.getAttribute('aria-expanded')==='true';
+          const title='Advanced Options · '+(expanded?'Collapse':'Expand');
+          entries.push({el:toggle,title,label:'advanced options',key:normalize(title+' 고급 옵션 '+msg(expanded?'collapse':'expand')),press:true,structure:true});
         }
         for(const spec of stepCommands.filter(s=>['done','cancel','delete'].includes(s.id))) {
           const el=stepButton(card,spec);
-          if(el && enabled(el)) entries.push({el,title:spec.label,label:spec.id,key:normalize(spec.id+' '+spec.label),press:true});
+          if(el && enabled(el)) entries.push({el,title:spec.id[0].toUpperCase()+spec.id.slice(1),label:spec.id,key:normalize(spec.id+' '+spec.label),press:true});
         }
         return entries;
       }
       return card.matches(logicCard)?logicControls(card):actionFields(card);
     }
-    function beginField() {
+    function beginField(fromField=false) {
+      finderHistory.length=0;
       const active=deepActive(), card=state.card;
       if (!card) {say(msg('selectConditionStep'));return;}
       for (const el of manual.field) if (!el.isConnected) manual.field.delete(el);
@@ -897,9 +959,14 @@
         const replacement=card.querySelector('#'+CSS.escape(id));
         if (replacement && cardOf(replacement)===card) manual.field.add(replacement);
       }
-      if(card.matches(actionCard+', '+logicCard) || card.matches(triggerCard) && card.querySelector('#adv_trigger_toggle_button,#flow_trigger_btn_done')) {
+      if(fromField || card.matches(actionCard+', '+logicCard) || card.matches(triggerCard) && card.querySelector('#adv_trigger_toggle_button,#flow_trigger_btn_done')) {
         const entries=editorEntries(card);
-        if(entries.length) {showFinder(entries,active,card);return;}
+        if(entries.length) {
+          const last=lastFieldSearch.get(card);
+          showFinder(entries,active,card,'',last);
+          if(last?.value) query.select();
+          return;
+        }
       }
       const automatic=localButtons(card).filter(b=>!b.matches('select.select2-offscreen,[id$="-script"]') && (fields.test(name(b)) || b.matches(fieldButtons)));
       const candidates=uniqueControls([...manual.field,...automatic].map(fieldTarget)
@@ -930,7 +997,7 @@
       if (!target) {say(msg('noFieldPicker'));return;}
       openPicker(target,'field');
     }
-    function openPicker(el,kind,seed='',title='',choice=null,openAction=false,preferredCategory='') {
+    function openPicker(el,kind,seed='',title='',choice=null,preferredCategory='') {
       if (!enabled(el)) {closeChoices();say(msg('targetChanged'));return;}
       const owner=cardOf(el) || state.card;
       const placement=kind==='add' ? insertionPosition(el) : '';
@@ -939,7 +1006,7 @@
       const description=kind==='field' && fieldDescription(el);
       if(description) {title=title || description.title;reveal(el);}
       const before=new Set(index().all(pickers+', '+search));
-      state.picker={el,kind,owner,before,seed,placement,choice,quickOrigin,openAction,preferredCategory,cardsBefore:new Set(index().cards),ready:false,surface:null};
+      state.picker={el,kind,owner,before,seed,placement,choice,quickOrigin,preferredCategory,cardsBefore:new Set(index().cards),ready:false,surface:null};
       if(kind==='add' && el.matches(addTrigger)) {
         state.picker.trigger=true;
         state.picker.triggerScope=el.closest('.trigger-section');
@@ -1039,7 +1106,6 @@
           p.categories=categories;p.ready=true;
           captionText.textContent=msg('insertion')+' · '+p.placement;draw();
           const action=categories.find(b=>b.id==='flow_action_newAction');
-          if(p.openAction && action) {p.openAction=false;action.click();return;}
           focus(categories.find(button=>button.id===p.preferredCategory) || action || categories[0],rowCaption);
           say(msg('categoryKeys'));return;
         }
@@ -1062,7 +1128,7 @@
         const input=Array.from(local?.querySelectorAll(stepSearch) || []).find(el=>el.matches(textSearch) && enabled(el)) ||
           index().all(stepSearch).find(el=>!p.before.has(el));
         if(!input) return;
-        p.surface=input.closest(searchableMenu) || (p.trigger && input.closest('#picker2col_wrapper_select_trigger')) || input;
+        p.surface=(p.trigger && input.closest('#picker2col_wrapper_select_trigger')) || input.closest(searchableMenu) || input;
         p.searchInput=input;
         p.ready=true;p.searchUntil ??= performance.now()+700;
         focus(input);
@@ -1162,6 +1228,11 @@
       if(!follow) return;
       const f=follow;
       let card=f.card;
+      if(f.trigger) {
+        const triggers=index().cards.filter(c=>c.matches(triggerCard) && c.querySelector(studioHeader));
+        if(triggers.length!==1) return;
+        card=triggers[0];
+      }
       if(!card?.isConnected) {
         const candidates=index().cards.filter(c=>f.card ? f.key && cardKey(c)===f.key :
           !f.before.has(c) && !f.keys.has(cardKey(c)));
@@ -1172,16 +1243,14 @@
       }
       if(state.picker?.committed) state.picker=null;
       const inputs=formInputs(card).filter(el=>!f.previous?.has(el));
-      if(f.previous && !inputs.length) return;
+      if(f.previous && !inputs.length && !f.trigger) return;
       const active=deepActive();
-      if(f.editing && !(active?.closest('#picker2col_opener_select_action,#picker2col_opener_select_trigger') && card.contains(active))) return;
+      if(f.editing && !(f.trigger && (active===document.body || active===card)) && !(active?.closest('#picker2col_opener_select_action,#picker2col_opener_select_trigger') && card.contains(active))) return;
       const editor=inputs[0];
       if(f.action || card.matches(actionCard+', '+logicCard)) {
         const entries=editorEntries(card);
         if(entries.length) {
           cancelFollow();select(card);
-          const first=editor || entries[0].el;
-          reveal(first,first.closest(groupSelector) || card.querySelector(studioHeader));
           showFinder(entries,f.origin?.isConnected ? f.origin : card,card);return;
         }
       }
@@ -1231,7 +1300,7 @@
       const slot=insertionFor(p);
       if(slot) {
         state.quickOrigin=p.quickOrigin || p.owner || document.body;
-        openPicker(slot,'add','','',null,false,id);
+        openPicker(slot,'add','','',null,id);
       } else restore();
     }
     function returnToInsertion(p) {
@@ -1264,6 +1333,7 @@
       clearRow();
       if (!p) return;
       cache=null;
+      if(p.escape && backToFinder()) return;
       if(p.backToPreview && p.quickOrigin?.isConnected) {
         const toggle=p.categoryScope?.querySelector('#flow_action_btnToggleAction') ||
           (p.category || p.categories?.[0])?.closest('.instance-type-new')?.querySelector('#flow_action_btnToggleAction');
@@ -1271,6 +1341,7 @@
         focus(p.quickOrigin);beginAdd(p.quickOrigin,p.placement);return;
       }
       if(p.committed) {followNewForm();return;}
+      if(p.trigger && p.escape) {returnToInsertion(p);return;}
       const current=cardOf(deepActive());
       if (p.kind==='add') {
         const added=index().cards.filter(c=>!p.cardsBefore.has(c));
@@ -1288,15 +1359,73 @@
       const returnTo=field.matches('.select2-container') ? field.querySelector('.select2-focusser') : null;
       focus(shown(field)?(returnTo || field):owner);
     }
+    let stage=null;
+    function trackStage(control,opened) {
+      const holder=control.closest('.instance-component-stage-container') || control.parentElement;
+      stage={holder,root:holder.getRootNode(),header:holder.querySelector(studioHeader)?.id,button:control,opened};
+    }
+    function stageGesture(target) {
+      for(const type of ['mousedown','mouseup','click']) target.dispatchEvent(
+        new MouseEvent(type,{view:window,bubbles:true,cancelable:true,button:0,buttons:type==='mousedown'?1:0}));
+    }
+    function syncStage() {
+      if(!stage) return;
+      const holder=stage.holder.isConnected ? stage.holder :
+        stage.header && stage.root.getElementById(stage.header)?.closest('.instance-component-stage-container');
+      if(!holder) {stage=null;return;}
+      const opener=holder.querySelector(stageButton);
+      if(opener && enabled(opener)) {
+        if(!stage.opened && opener===stage.button) return;
+        if(stage.reopenChooser) {
+          opener.click();
+          if(stage) stage.returnToCreate=true;
+          invalidate();return;
+        }
+        stage=null;focus(opener);mark('field',opener);say(name(opener)+' · '+msg('stageKeys'));return;
+      }
+      const create=holder.querySelector(stageCreate);
+      if(!create || !shown(create)) return;
+      if(stage.returnToCreate && !create.matches('[aria-expanded=true]')) {
+        stage.returnToCreate=false;stage.opened=true;focus(create);say(msg('stageEditKeys'));return;
+      }
+      if(!stage.opened) {
+        stage.opened=true;
+        focus(holder.querySelector('.stage-container .select2-container:not(.select2-container-disabled) .select2-focusser') || create);
+        say(msg('stageEditKeys'));
+      }
+    }
+    function handleStageKey(e,el,take) {
+      if(e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return !!stage && !!el.closest('.stage-container');
+      if(el.matches(stageButton)) {
+        if(['ArrowDown','ArrowUp'].includes(e.key)) {take();navigate(e.key);return true;}
+        if(e.key==='Enter') {take();if(!e.repeat) el.click();return true;}
+      }
+      const area=el.closest('.stage-container');
+      if(!area || !area.querySelector(stageCreate) || el.closest('.select2-drop')) return false;
+      if(!stage) trackStage(area.querySelector(stageCreate),true);
+      if(e.key==='Escape') {
+        take();logicKeyups.add(e.code);
+        // Studio owns a transient popover inside a transient chooser. Dismiss the
+        // native editor, then reopen its chooser at the same step when backing out of the form.
+        stage.reopenChooser=!!el.closest(stageForm) || area.querySelector(stageCreate)?.getAttribute('aria-expanded')==='true';
+        const canvas=area.closest('#app-floweditor') || document.body;
+        stageGesture(canvas);
+        invalidate();
+      }
+      return true;
+    }
     function navigate(key) {
       const insertions=insertionTargets();
-      const stops=[...new Set([...index().cards,...insertions])].sort(canvasOrder);
+      const stops=[...new Set([...index().cards,...insertions,...index().buttons.filter(b=>b.matches(stageButton) && enabled(b))])].sort(canvasOrder);
       if(!stops.length) {say(msg('noStops'));return;}
       const active=deepActive();
-      const current=state.position || (insertions.includes(active) ? active : state.card);
+      const current=active?.matches(stageButton) ? active : state.position || (insertions.includes(active) ? active : state.card);
       const i=stops.indexOf(current);
       const next=stops[Math.min(stops.length-1,Math.max(0,i+(key==='ArrowDown'?1:-1)))];
       if(next===current) return;
+      if(next.matches(stageButton)) {
+        closeChoices();focus(next);mark('field',next);say(name(next)+' · '+msg('stageKeys'));return;
+      }
       if(insertions.includes(next)) {
         if(!state.choices) state.quickOrigin=cardShortcutTarget(active) ? active : state.card || document.body;
         state.choices=insertions;state.choiceKind='add';preview(insertions.indexOf(next));return;
@@ -1325,14 +1454,38 @@
       if(!state.card || !(el instanceof Element) || ancestor(el,n=>n.matches(interactive+', '+pickers))) return false;
       return el===state.card || !!el.closest(studioHeader) && cardOf(el)===state.card;
     }
+    function fieldSearchShortcut(el) {
+      if(!state.card || !finder.hidden || !commands.hidden || state.binding || state.choices || deletion?.dialog ||
+          !(el instanceof Element) || cardOf(el)!==state.card || ancestor(el,n=>n.matches(pickers+', '+searchableMenu))) return '';
+      const field=fieldTarget(el);
+      const p=state.picker;
+      if(p && (p.kind!=='field' || p.el!==field || p.surface && shown(p.surface))) return '';
+      if(el.matches('[aria-expanded="true"]') || field.matches('[aria-expanded="true"],.select2-dropdown-open') ||
+          field.matches('select') && CSS.supports('selector(select:open)') && field.matches(':open') ||
+          index().all(surfaces).length) return '';
+      // Select2's focus proxy receives keys after selection. Multi-select search accepts text.
+      const editor=ancestor(el,n=>n.matches('textarea,[role="textbox"],[role="searchbox"],[contenteditable]:not([contenteditable="false"]),input:not([type]),input:is([type=text],[type=search],[type=email],[type=url],[type=tel],[type=password],[type=number])'));
+      if(editor && !editor.matches('.select2-focusser,[readonly],[aria-readonly="true"]')) return 'F2';
+      if(field.matches(fieldButtons+', input,[role="checkbox"],[role="radio"],[role="switch"]') ||
+          field.matches('button,[role="button"],[aria-haspopup]') && (field.closest('form,'+groupSelector) || pillName.test(name(field)))) return 'F';
+      return '';
+    }
     function updateHint() {
       const hint=get('key-hint'), active=deepActive();
       // Keep the bottom-anchored panel still between pointer-down and click.
       if(active && ui.contains(active) && active!==query && finder.hidden && commands.hidden) return;
       let message='';
-      if(commands.hidden && finder.hidden && !state.binding && !state.choices && !state.picker && !deletion?.dialog) {
+      if(!finder.hidden || finderHistory.length) {
+        message=msg('escTo',finderHistory.length ? msg('fieldList') : stepTitle(state.card) || msg('currentStep'));
+      } else if(commands.hidden && finder.hidden && !state.binding && !state.choices && !state.picker && !deletion?.dialog) {
         if(cardShortcutTarget(active)) message=msg('cardKeys');
         else if(active && state.card && cardOf(active)===state.card && active.matches(interactive)) message=msg('inputKeys');
+      }
+      const shortcut=fieldSearchShortcut(active);
+      if(shortcut) message=[shortcut+' '+msg('findFields'),message].filter(Boolean).join(' · ');
+      if(active?.matches(interactive) && state.card && cardOf(active)===state.card && !state.picker &&
+          !active.closest(pickers) && stepButton(state.card,doneCommand)) {
+        message+=' · '+(mac?'⌘':'Ctrl')+'+Enter '+msg('done');
       }
       if(hint.textContent!==message) hint.textContent=message;
       hint.hidden=!message;
@@ -1377,7 +1530,8 @@
       }
     }
     function key(e) {
-      if(!e.repeat) insertionReturn=null;
+      if(e.repeat && logicKeyups.has(e.code)) {e.preventDefault();e.stopImmediatePropagation();return;}
+      if(!e.repeat) {insertionReturn=null;closingForm=null;}
       pendingFieldRow=null;
       if (e.defaultPrevented) return;
       const el=e.composedPath()[0], k=e.key;
@@ -1400,8 +1554,24 @@
         }
       }
       if(commands.hidden && !state.binding && !e.composedPath().includes(host) && resumeSearch(e,el)) return;
+      if((e.code==='KeyF' || e.code==='F2') && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        let target=el;
+        // A portalled picker can disappear one event before Studio restores focus.
+        if(el===document.body && state.picker?.kind==='field' && state.picker.surface && !shown(state.picker.surface)) {
+          restore();target=deepActive();
+        }
+        if(fieldSearchShortcut(target)===(e.code==='KeyF'?'F':'F2')) {
+          e.preventDefault();e.stopImmediatePropagation();
+          if(!e.repeat) {
+            if(state.picker) restore();
+            beginField(true);
+          }
+          return;
+        }
+      }
       if(e.isComposing || e.keyCode===229) return;
       cancelFollow();
+      if(k==='Escape' && e.repeat) {e.preventDefault();e.stopImmediatePropagation();return;}
       if(k==='Escape') state.triggerChoice=null;
       if(k==='Tab' && !e.composedPath().includes(host)) {
         cancelAnimationFrame(tabFrame);
@@ -1419,10 +1589,16 @@
         if (id && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
           take();if(!e.repeat) run(id);return;
         }
-        if (k==='Escape') {take();commands.hidden=true;say(state.card ? stepTitle(state.card) : msg('openWith',prefix));return;}
+        if (k==='Escape') {take();commands.hidden=true;focus(commandOrigin?.isConnected && !ui.contains(commandOrigin) ? commandOrigin : state.card);say(state.card ? stepTitle(state.card) : msg('openWith',prefix));return;}
         if (!['Control','Meta','Shift','Alt','Tab'].includes(k) && !e.composedPath().includes(commands)) commands.hidden=true;
       }
       if (e.composedPath().includes(host)) return;
+      if(handleStageKey(e,el,take)) return;
+      const finish=k==='Enter' && (mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey) && !e.altKey && !e.shiftKey;
+      if(finish && !state.picker && !state.choices && cardOf(el)===state.card && state.card &&
+          !ancestor(el,n=>n.matches(pickers)) && stepButton(state.card,doneCommand)) {
+        take();if(!e.repeat) runStep(doneCommand,state.card);return;
+      }
       if(k==='Enter' && !e.repeat && !state.picker && !state.choices && el.closest?.(studioHeader)) {
         const owner=cardOf(el);
         if(owner?.matches(logicCard+', '+actionCard) && !Array.from(owner.querySelectorAll('form.inputFields')).some(shown)) expectForm(owner);
@@ -1478,16 +1654,20 @@
         }
         if((p.category || p.trigger) && p.surface && ancestor(el,n=>n===p.surface) && !e.altKey && !e.ctrlKey && !e.metaKey) {
           const input=p.searchInput;
-          if(input?.value.trim() && ['ArrowDown','ArrowUp','Enter'].includes(k)) {
-            const hits=Array.from(p.surface.querySelectorAll(p.trigger ? 'button.rm-btn-action,button.rm-btn-trigger' : 'button.rm-btn-action')).filter(enabled);
+          if(p.trigger && k==='Enter' && el===input && (!input.value.trim() || !Array.from(p.surface.querySelectorAll(triggerResults)).some(enabled))) {
+            take();logicKeyups.add(e.code);return;
+          }
+          if((input?.value.trim() || p.trigger && el.matches(triggerResults)) && ['ArrowDown','ArrowUp','Enter'].includes(k)) {
+            const hits=Array.from(p.surface.querySelectorAll(p.trigger ? triggerResults : 'button.rm-btn-action')).filter(enabled);
             const i=hits.indexOf(el);
             if(hits.length && (el===input || i>=0)) {
               take();
               if(k==='Enter') {
                 if(e.repeat) return;
+                if(p.trigger) logicKeyups.add(e.code);
                 if(i>=0) {commitResult(p,hits[i]);return;}
                 const q=normalize(input.value);
-                const exact=hits.filter(b=>normalize(name(b))===q);
+                const exact=hits.filter(b=>normalize(b.dataset.name || name(b))===q);
                 if(exact.length===1) commitResult(p,exact[0]);
                 else focus(hits[0]);
               } else if(i<0) focus(k==='ArrowDown'?hits[0]:hits[hits.length-1]);
@@ -1497,6 +1677,7 @@
           }
         }
         if (k==='Escape') {
+          p.escape=true;logicKeyups.add(e.code);
           p.backToPreview=!!p.quickOrigin;
           setTimeout(()=>{if(state.picker===p) restore();},0);return;
         }
@@ -1520,19 +1701,30 @@
       if (state.choices && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey &&
           (['ArrowUp','ArrowDown','Enter'].includes(k) || state.quickOrigin && k==='ArrowRight')) {
         take();if (e.repeat && k==='Enter') return;
-        if (k==='Enter' || k==='ArrowRight') openPicker(state.position,state.choiceKind,'','',null,!!state.quickOrigin && k==='Enter');
+        if (k==='Enter' || k==='ArrowRight') {
+          if(k==='Enter') logicKeyups.add(e.code);
+          openPicker(state.position,state.choiceKind);
+        }
         else navigate(k);
         return;
       }
       if (k==='Escape' && state.card && el!==state.card && cardOf(el)===state.card && !ancestor(el,n=>n.matches(pickers))) {
+        if(finderHistory.length) {take();backToFinder();return;}
+        if(!el.matches('select,[role=combobox],.select2-focusser') && !el.closest('.select2-container') && !/annotation/i.test(el.getAttribute('aria-label') || '')) {
+          take();focus(state.card);say(stepTitle(state.card));return;
+        }
         setTimeout(()=>{if(session && !e.defaultPrevented && deepActive()===el) focus(state.card);},0);
         return;
       }
       if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey || ancestor(el,n=>n.matches(interactive)) || ancestor(el,n=>n.matches(pickers))) return;
       const onCard=cardShortcutTarget(el);
-      if(onCard && !state.binding && !state.choices && !state.picker && finder.hidden && (k.toLowerCase()==='n' || k.toLowerCase()==='f')) {
+      if(onCard && !state.binding && !state.choices && !state.picker && finder.hidden) {
+        const spec=stepCommands.find(s=>['done','cancel','delete'].includes(s.id) && e.code==='Key'+s.key);
+        if(spec) {take();if(!e.repeat) runStep(spec,state.card);return;}
+      }
+      if(onCard && !state.binding && !state.choices && !state.picker && finder.hidden && ['KeyN','KeyF'].includes(e.code)) {
         take();if(e.repeat) return;
-        if(k.toLowerCase()==='n') beginAdd(el);
+        if(e.code==='KeyN') beginAdd(el);
         else {
           const header=state.card.querySelector(studioHeader);
           if(header && state.card.matches(actionCard+', '+logicCard) && !formInputs(state.card).length &&
@@ -1567,7 +1759,10 @@
       if(logicKeyups.delete(e.code)) {e.preventDefault();e.stopImmediatePropagation();}
     },true);
     on(document,'pointerdown',e=>{
-      insertionReturn=null;
+      insertionReturn=null;closingForm=null;
+      const el=e.composedPath()[0];
+      if(stage && !el.closest?.('.stage-container,.select2-drop')) stage=null;
+      if(!e.composedPath().includes(host) && !el.closest?.(pickers)) finderHistory.length=0;
       pendingFieldRow=null;
       releaseViewport();cancelFollow();annotationCard=null;
       if(state.picker?.ready) state.picker.searchUntil=0;
@@ -1599,6 +1794,20 @@
       const chosen=e.composedPath().find(n=>n instanceof Element && n.matches(categoryButtons));
       const p=state.picker;
       const raw=e.composedPath()[0];
+      const stageOpener=raw.closest?.(stageButton);
+      if(stageOpener) {
+        trackStage(stageOpener,false);
+        invalidate();
+      }
+      const triggerOpener=raw.closest?.(addTrigger);
+      if(triggerOpener && !p?.trigger && !state.binding) {
+        const scope=triggerOpener.closest('.trigger-section');
+        if(scope && !Array.from(scope.querySelectorAll(stepSearch)).some(shown)) {
+          state.picker={el:triggerOpener,kind:'add',trigger:true,triggerScope:scope,owner:cardOf(triggerOpener),
+            before:new Set(index().all(stepSearch)),cardsBefore:new Set(index().cards)};
+          invalidate();
+        }
+      }
       const property=raw.closest?.('#picker2col_opener_select_action');
       if(property && !state.binding) {
         if(p?.el===property && p.surface && shown(p.surface)) {state.picker=null;return;}
@@ -1617,7 +1826,7 @@
         state.picker=null;clearRow();return;
       }
       if(!state.binding && raw instanceof Element && !e.composedPath().includes(host)) {
-        const result=raw.closest('.rm-btn-action,.rm-btn-trigger,[role="option"],[role="menuitem"],[role="treeitem"]');
+        const result=raw.closest('.rm-btn-action,.rm-btn-trigger,#picker2col_wrapper_select_trigger button.button-left[data-index][data-name],[role="option"],[role="menuitem"],[role="treeitem"]');
         const trigger=p?.trigger ? cardOf(raw) || cardOf(p.el) : state.triggerChoice;
         if(raw.closest('#picker2col_opener_select_trigger')) state.triggerChoice=cardOf(raw);
         else if(result && (p?.surface?.contains(result) || result.closest('.action-picker-component,.trigger-picker-component') || trigger && result.closest(pickers))) {
@@ -1628,6 +1837,7 @@
               expectForm(triggerCard || null,Boolean(triggerCard),p?.kind==='add' ? [...p.cardsBefore] : index().cards,p?.category?.id==='flow_action_newAction' || !!result.closest('.rm-btn-action') && !p?.trigger && !triggerCard && !p?.category);
             }
           }
+          if(follow && (p?.trigger || result.closest('#picker2col_wrapper_select_trigger'))) follow.trigger=true;
           state.triggerChoice=null;
         } else if(raw.closest(studioHeader) || raw.closest('[role=button]')?.querySelector(studioHeader) ||
             !raw.closest('a,button,input,select,textarea,[role=button]') && raw.closest('.section-item')?.querySelector(studioHeader)) {
@@ -1685,7 +1895,8 @@
     on(window,'pagehide',()=>stop(true));on(window,'popstate',invalidate);on(window,'hashchange',invalidate);
     function arm() {
       if(deletion?.dialog && shown(deletion.dialog)) return;
-      pendingFieldRow=null;
+      commandOrigin=deepActive();
+      pendingFieldRow=null;finderHistory.length=0;
       cancelFollow();hideFinder();closeChoices();state.binding=null;commands.hidden=false;
       commandCard=state.card;
       for(const spec of stepCommands) commands.querySelector('[data-command='+spec.id+']').hidden=!stepButton(commandCard,spec);
